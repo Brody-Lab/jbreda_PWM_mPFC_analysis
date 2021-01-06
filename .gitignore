@@ -1,0 +1,21 @@
+# taken from jbreda_kilosort
+# file type
+
+*.rec
+*.dat
+*.bin
+*.mda
+*.asv
+*.npy
+*.tsv
+*.phy
+
+# folder- anything with data in name/content
+
+data.*
+data
+logs/**
+logs/
+logs*
+data/
+data/*
