@@ -13,7 +13,7 @@ function res = find_wireless_sess_J(sess, varargin)
 % this seems useful- will add some documentation here
 p = inputParser();
 addParameter(p,'overwrite',0);
-addParameter(p,'ratlist', 'W122'); % if multiple rats: {'H191','H176'}
+addParameter(p,'ratlist', {'W122'}); % if multiple rats: {'H191','H176'}
 addParameter(p,'expmtr','Emily');
 addParameter(p,'behavs_dir','');
 addParameter(p,'mdas_dir','');
@@ -37,7 +37,7 @@ end
 % directories that have .mda in name (need to edit this for where I keep
 % mda files) & multiple rats...?
 if  isempty(mdas_dir)
-    phys_dir    = 'W:\jbreda\ephys\W122';
+    phys_dir    = fullfile('W:\jbreda\ephys\', ratlist{1});
     mda_dir     = fullfile(phys_dir, sprintf('%s.mda', sess));
 else 
     mda_dir = fullfile(mdas_dir, sprintf('%s.mda', sess));
@@ -68,8 +68,8 @@ if ~exist(dio_file)
     % repace the .mda with .DIO to change into the correct directory & grab
     % the correct fname
     dio_file = fullfile([strrep(mda_dir,'.mda','.DIO')], [sess '.dio_RFINPUT.dat']);
-    
 end
+
 %double check to make sure dio file is actually there
 fi=dir(dio_file);
 if(isempty(fi))
@@ -107,7 +107,7 @@ sessiondate = ['20' date_str([1 2]) '-' date_str([3 4]) ...
 dio     = readTrodesExtractedDataFile(dio_file);
 c       = dio.fields(1).data;
 b       = dio.fields(2).data;
-ttls    = double(c(b==1))/fs;
+ttls    = double(c(b==1))/fs; % this is ttls in seconds
 
 inc     = 0;
 
@@ -117,7 +117,7 @@ for ss = 0:(ndays-1);
     this_datestr = datestr(datenum(sessiondate) - ss,'yymmdd');
     
     for rr = 1:length(ratlist)
-        fntemp      = fullfile(behav_dir, ratlist{rr}, ['data_*' this_datestr '*.mat']);
+        fntemp      = fullfile(behavs_dir, ratlist{rr}, ['data_*' this_datestr '*.mat']);
         ratfiles    = dir(fntemp);
         if isempty(ratfiles)
             fprintf(['couldn''t find a match for ' strrep(fntemp,'\','\\')])
