@@ -1,14 +1,35 @@
 function res = find_wireless_sess_J(sess, varargin)
-% function res = find_ttl_match(sess, ratlist, behav_dir, mda_dir)
-% given a set of ttls and a date, search through a list of rats to find the best physiology session to match these ttls
-
-%%
-
-% == example call
-% find_wireless_sess_J(session, 'overwrite', 1, 'ratlist', 'W122', 'expmtr', 'Emily', 
-% 'behavs_dir', 'Y:\RATTER\SoloData\Data\Emily\' , 'mdas_dir','W:\jbreda\ephys\W122')
+% %% ---------------------
+% orifinally written by Tyler Boyd-Meridth and adapted by Jess Breda
+% 20210111. The purpose of this function is to find the correct bdata file
+% & session id for ephys collection & save out information for ttl alignmnet
+% between finite state machine (fsm) and trodes ephys
+%
+% INPUT PARAMETERS:
+% - sess = name of session you'd like to find & align as a string.
+% - rat_name = name of rat in session as a string 
+%
+% OPTIONAL PARAMETERS:
+% - overwrite = if this session has already been run, 0 to skip, 1 to
+% rerun
+% - expmtr = experimenter who ran the physiology as a string 
+% - behav_dir = directory where behavior data is stored e.g. 'Y:\RATTER\SoloData\Data\Emily\'
+% - mdas_dir = directory where .mda/.dio folders are
+% - fs = sampling rate of electrophsyiology recording 
+% 
+% RETURNS:
+% - if match is found for a session, saves the file ttl_match.mat in the 
+% session.mda folder with the session & rat name passed into the function 
+% as well as a res struct with
+% paths, ttl conversions & additonal info needed for alignment.
+% 
+% = EXAMPLE CALLS:
+% - find_wireless_sess_J('data_sdb_20190724_193007_fromSD' 'W122', 'expmtr', 'Emily', 'behav_dir', 
+% 'Y:\RATTER\SoloData\Data\Emily\')
 
 % assumes you are running on a PC!
+
+% ---------------------
 %% PARSE INPUTS & LOCATE DIRECTORIES
 % this seems useful- will add some documentation here
 p = inputParser();
