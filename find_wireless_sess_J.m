@@ -25,7 +25,7 @@ function res = find_wireless_sess_J(sess, varargin)
 % paths, ttl conversions & additonal info needed for alignment.
 % 
 % EXAMPLE CALL:
-% find_wireless_sess_J('data_sdb_20190724_193007_fromSD' 'W122', 'expmtr', 'Emily', 'behav_dir', 
+% find_wireless_sess_J('data_sdb_20190724_193007_fromSD', 'W122', 'expmtr', 'Emily', 'behav_dir', 
 % 'Y:\RATTER\SoloData\Data\Emily\')
 %
 % TODO:
@@ -35,9 +35,9 @@ function res = find_wireless_sess_J(sess, varargin)
 % assumes you are running on a PC!
 %
 % ---------------------
-%% PARSE INPUTS & LOCATE DIRECTORIES
+%% PARSE INPUTS
 p = inputParser();
-addParameter(p,'overwrite',0); % defualt is skip if alrady run
+addParameter(p,'overwrite',1); % defualt is skip if alrady run
 addParameter(p,'rat_name', 'W122'); % if multiple rats: {'H191','H176'}
 addParameter(p,'expmtr','Emily');
 addParameter(p,'behav_dir',''); % will assign below
@@ -47,12 +47,13 @@ parse(p,varargin{:});
 
 brody_dir = 'Y:'; % change this depending on how you mount bucket
 overwrite   = p.Results.overwrite;
-rat_name     = p.Results.ratname;
+rat_name     = p.Results.rat_name;
 expmtr      = p.Results.expmtr;
 behav_dir   = p.Results.behav_dir;
 mdas_dir     = p.Results.mdas_dir;
 fs          = p.Results.fs;
 
+%% LOCATE PATHS 
 % --- behavior data --- 
 % if there is no behavior directory passed in, use the experimenters
 % behavior directory 
@@ -108,10 +109,8 @@ end
 % sometimes sessions are named like 1) data_sdc_20190730_143641_fromSD or
 % 2) W122_09_21_2019_1_fromSD and this code will extract the meaningful
 % info from each title & reformat into a usable data for bdata search
-% TODO write this into it's own function
 
 if strcmp(sess(1:4),'data')
-    ratname = '';
     is_yyyy = regexp(sess,'20\d\d\d\d\d\d_\d\d');
     if ~isempty(is_yyyy)
         ind = is_yyyy + 2;
@@ -119,14 +118,14 @@ if strcmp(sess(1:4),'data')
         ind = regexp(sess,'\d\d\d\d\d\d_\d\d');
     end
     date_str = sess(ind + (0:5));
-    fprintf('no ratname, will look for best match on date %s',date_str)
+    fprintf('name in data_YYMMDD format; session data is: %s',date_str)
     
 else
-    ratname = sess(1:4);
-    rat_name = {ratname};
     date_str = sess([14 15 6 7 9 10]);
-    fprintf('ratname %s, date %s',ratname,date_str)
+    fprintf('named in rat_MM_DD_YYYY format; session date is: %s',date_str)
 end
+
+% get date in SoloData format
 sessiondate = ['20' date_str([1 2]) '-' date_str([3 4]) ...
     '-' date_str([5 6])];
 
