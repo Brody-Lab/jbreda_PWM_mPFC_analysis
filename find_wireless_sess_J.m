@@ -14,7 +14,8 @@ function res = find_wireless_sess_J(sess, varargin)
 % rerun
 % - expmtr = experimenter who ran the physiology as a string 
 % - behav_dir = directory where behavior data is stored e.g. 'Y:\RATTER\SoloData\Data\Emily\'
-% - mdas_dir = directory where .mda/.dio folders are
+% - mdas_dir = directory where .mda/.dio folders are for this (and other)
+% sessions
 % - fs = sampling rate of electrophsyiology recording 
 % 
 % RETURNS:
@@ -23,53 +24,60 @@ function res = find_wireless_sess_J(sess, varargin)
 % as well as a res struct with
 % paths, ttl conversions & additonal info needed for alignment.
 % 
-% = EXAMPLE CALLS:
-% - find_wireless_sess_J('data_sdb_20190724_193007_fromSD' 'W122', 'expmtr', 'Emily', 'behav_dir', 
+% EXAMPLE CALL:
+% find_wireless_sess_J('data_sdb_20190724_193007_fromSD' 'W122', 'expmtr', 'Emily', 'behav_dir', 
 % 'Y:\RATTER\SoloData\Data\Emily\')
-
+%
+% TODO:
+% - rat_name iteration fix
+% to iterate over .mda folders or not?
+%
 % assumes you are running on a PC!
-
+%
 % ---------------------
 %% PARSE INPUTS & LOCATE DIRECTORIES
-% this seems useful- will add some documentation here
 p = inputParser();
-addParameter(p,'overwrite',0);
-addParameter(p,'ratlist', {'W122'}); % if multiple rats: {'H191','H176'}
+addParameter(p,'overwrite',0); % defualt is skip if alrady run
+addParameter(p,'rat_name', 'W122'); % if multiple rats: {'H191','H176'}
 addParameter(p,'expmtr','Emily');
-addParameter(p,'behavs_dir','');
-addParameter(p,'mdas_dir','');
+addParameter(p,'behav_dir',''); % will assign below
+addParameter(p,'mdas_dir',''); % will assign below
 addParameter(p,'fs',30000)
 parse(p,varargin{:});
 
-brody_dir = 'Y:';
+brody_dir = 'Y:'; % change this depending on how you mount bucket
 overwrite   = p.Results.overwrite;
-ratlist     = p.Results.ratlist;
+rat_name     = p.Results.ratname;
 expmtr      = p.Results.expmtr;
-behavs_dir   = p.Results.behavs_dir;
+behav_dir   = p.Results.behav_dir;
 mdas_dir     = p.Results.mdas_dir;
 fs          = p.Results.fs;
 
-% if there is no behavior directory passed in, look in the experiments
-% behavior directory
-if isempty(behavs_dir)
-    behavs_dir = fullfile(brody_dir, 'RATTER/SoloData/Data', expmtr);
+% --- behavior data --- 
+% if there is no behavior directory passed in, use the experimenters
+% behavior directory 
+if isempty(behav_dir)
+    behav_dir = fullfile(brody_dir, 'RATTER/SoloData/Data', expmtr);
 end
-% if there is no mda directory, look in experimenters folder for
-% directories that have .mda in name (need to edit this for where I keep
-% mda files) & multiple rats...?
+
+% --- ephys ---
+% if there is no mda directory, use my folder where I store ephys by rat 
+% name, look in rat_names folder, and find the .mda folder for the
+% session (same thing for if mdas_dir was passed in)
 if  isempty(mdas_dir)
-    phys_dir    = fullfile('W:\jbreda\ephys\', ratlist{1});
-    mda_dir     = fullfile(phys_dir, sprintf('%s.mda', sess));
+    ephys_dir    = fullfile('W:\jbreda\ephys\', rat_name);
+    mda_dir     = fullfile(ephys_dir, sprintf('%s.mda', sess));
 else 
     mda_dir = fullfile(mdas_dir, sprintf('%s.mda', sess));
 end
 
-% make sure the mda_dir is a folder
+% make sure the mda_dir is a folder & create a .mat file to save session & 
+% alignment into later. in get_ksphy_results, you want this to be in .mda
+% folder
 assert(exist(mda_dir,'dir')==7) % 7 = name is a folder
-% where to save things % pressure sure i should be in an mda folder right
-% now
 save_path   = fullfile(mda_dir, 'ttl_match.mat');
 
+% if this file has already been run, check overwrite status
 if exist(save_path) & ~overwrite
     dio = load(save_path,'res','sess');
     if strcmp(dio.sess, sess)
@@ -82,16 +90,15 @@ if exist(save_path) & ~overwrite
     end
 end
 
-%seems like a strange way to grab the dio file using the mda directory but
-%okay
+% use .mda folder name to create dio file name & make sure it is there
+% current name structur is: sess.DIO/data_sdb_20190724_193007_fromSD.dio_RFINPUT.dat)
 dio_file    = [mda_dir sess '.dio_RFINPUT.dat'];
 if ~exist(dio_file)
     % repace the .mda with .DIO to change into the correct directory & grab
-    % the correct fname
+    % the correct fname 
     dio_file = fullfile([strrep(mda_dir,'.mda','.DIO')], [sess '.dio_RFINPUT.dat']);
 end
 
-%double check to make sure dio file is actually there
 fi=dir(dio_file);
 if(isempty(fi))
     error(sprintf('dio missing %s',dio_file))
@@ -116,7 +123,7 @@ if strcmp(sess(1:4),'data')
     
 else
     ratname = sess(1:4);
-    ratlist = {ratname};
+    rat_name = {ratname};
     date_str = sess([14 15 6 7 9 10]);
     fprintf('ratname %s, date %s',ratname,date_str)
 end
@@ -137,8 +144,8 @@ ndays = 60;
 for ss = 0:(ndays-1);
     this_datestr = datestr(datenum(sessiondate) - ss,'yymmdd');
     
-    for rr = 1:length(ratlist)
-        fntemp      = fullfile(behavs_dir, ratlist{rr}, ['data_*' this_datestr '*.mat']);
+    for rr = 1:length(rat_name)
+        fntemp      = fullfile(behav_dir, rat_name{rr}, ['data_*' this_datestr '*.mat']);
         ratfiles    = dir(fntemp);
         if isempty(ratfiles)
             fprintf(['couldn''t find a match for ' strrep(fntemp,'\','\\')])
@@ -146,7 +153,7 @@ for ss = 0:(ndays-1);
         end
         for ff=1:length(ratfiles)
             inc             = inc +1;
-            rats{inc}       = ratlist{rr};
+            rats{inc}       = rat_name{rr};
             this_behav_name = ratfiles(ff).name;
             this_behav_path = fullfile(ratfiles(ff).folder, this_behav_name);
             filename{inc}   = this_behav_name;
