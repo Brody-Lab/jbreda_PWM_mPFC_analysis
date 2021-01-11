@@ -1,9 +1,9 @@
 function res = find_wireless_sess_J(sess, varargin)
 % %% ---------------------
 % orifinally written by Tyler Boyd-Meridth and adapted by Jess Breda
-% 20210111. The purpose of this function is to find the correct bdata file
+% 2021-01-11. The purpose of this function is to find the correct bdata file
 % & session id for ephys collection & save out information for ttl alignmnet
-% between finite state machine (fsm) and trodes ephys
+% between finite state machine (fsm) running behavior and trodes ephys
 %
 % INPUT PARAMETERS:
 % - sess = name of session you'd like to find & align as a string.
