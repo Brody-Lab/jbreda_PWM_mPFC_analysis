@@ -1,4 +1,4 @@
-function spkS = get_ksphy_results(varargin)
+function spkS = get_ksphy_results_T(varargin)
 % function get_ksphy_waveforms(sess_name)
 % For each bundle
     % 1. use sp = loadKSdir to get the spike times and cluster ids of all mua and good clusters
