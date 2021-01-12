@@ -1,6 +1,6 @@
 function res = find_wireless_sess_J(sess, varargin)
 % %% ---------------------
-% orifinally written by Tyler Boyd-Meridth and adapted by Jess Breda
+% originally written by Tyler Boyd-Meridth and adapted by Jess Breda
 % 2021-01-11. The purpose of this function is to find the correct bdata file
 % & session id for ephys collection & save out information for ttl alignmnet
 % between finite state machine (fsm) running behavior and trodes ephys
@@ -37,7 +37,7 @@ function res = find_wireless_sess_J(sess, varargin)
 % ---------------------
 %% PARSE INPUTS
 p = inputParser();
-addParameter(p,'overwrite',1); % defualt is skip if alrady run
+addParameter(p,'overwrite',0); % defualt is skip if alrady run
 addParameter(p,'rat_name', 'W122'); % if multiple rats: {'H191','H176'}
 addParameter(p,'expmtr','Emily');
 addParameter(p,'behav_dir',''); % will assign below
