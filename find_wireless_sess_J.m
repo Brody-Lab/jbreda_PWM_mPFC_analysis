@@ -167,17 +167,18 @@ for ss = 0:(ndays_back-1);
         load(this_behav_path, 'saved_history');
         warning('on')
         
-        % pull out events from fsm
+        % pull out events from fsm (SPECIFIC TO PWM)
         parsed_events   = saved_history.ProtocolsSection_parsed_events;
         
         % load behavior TTLS by iterating over each event (trial) and 
         % getting the ttl pulse time for when trial number was sent
+        % THIS IS SPECIFIC TO PWM
         ttls_fsm = nan(1,length(parsed_events)); 
         for i=1:length(parsed_events)
-            if(isfield(parsed_events{i}.states,'sending_trialnum') && ...
-                    length(parsed_events{i}.states.sending_trialnum)>0 )
+            if(isfield(parsed_events{i,1}.waves, 'TrigScope') && ...
+                    length(parsed_events{i,1}.waves.TrigScope(1,1))>0)
                 %only need the "on" time
-                ttls_fsm(i) = parsed_events{i}.states.sending_trialnum(1); 
+                ttls_fsm(i) = parsed_events{i,1}.waves.TrigScope(1,1); 
             else
                 ttls_fsm(i) = NaN; % if wasn't new trial, keep at NaN
             end
@@ -189,8 +190,8 @@ for ss = 0:(ndays_back-1);
         trode_gaps  = diff(ttls);
         fsm_gaps    = diff(ttls_fsm);
 
-        % look only at ttls delivered 5-10 seconds apart in trodes
-        trode_gaps_valid    = find(trode_gaps > 5 & trode_gaps < 10);
+        % look only at ttls delivered 2-10 seconds apart in trodes
+        trode_gaps_valid    = find(trode_gaps > 2 & trode_gaps < 10);
         
         % look for correspondance between the phys and behav sess ITIs
         ttls_fsmall=[];
@@ -272,8 +273,28 @@ else
         res.sessid      = sessid;
     end
     res.sessiondate = sessiondate;           % date in YYYY-MM-DD
+    
 end
 
+%%PLOT
+% clf;
+% ax1=subplot(2,1,1);
+% y = zeros(size(ttl_trodesall));
+% scatter(ttl_trodesall, y,'g', '*')
+% title('FSM ttl timestamps')
+% title('trodes ttl')
+% ax2=subplot(2,1,2);
+% y2 = zeros(size(ttls_fsmall));
+% scatter(ttls_fsmall, y2, 'k', '*')
+% title('bdata ttl')
+% 
+% figure(1)
+% clf;
+% scatter(ttl_trodesall, ttls_fsmall)
+% xlabel('trodes')
+% ylabel('bdata')
+% title(sess)
+% ADD SAVE OUT
 res.date_str    = date_str;                  % date in YYMMDD
 res.save_path   = save_path;
 save(save_path, 'res', 'sess')

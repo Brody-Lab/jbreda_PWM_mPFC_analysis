@@ -62,12 +62,12 @@ end
 
 % bundles
 bndl_names = {'first' 'fourth' 'second' 'third'}
-bndl_dirfun = @(n_bndl) fullfile(sorted_sss_dir, sprintf('%s_%sbundle',sess_name,n_bndl));
+bndl_dirfun = @(n_bndl) fullfile(sorted_sess_dir, sprintf('%s_%sbundle',sess_name,n_bndl));
 
 % channels
 mda_filefun = @(n_chan) fullfile(mda_dir, sprintf('%s.nt%i.mda',sess_name,n_chan));
 
-% where to save info & overwrite checl
+% where to save info & overwrite check
 save_name   = fullfile(sorted_sess_dir,'ksphy_clusters.mat');
 if exist(save_name,'file') && ~overwrite
     load(save_name,'spkS');
