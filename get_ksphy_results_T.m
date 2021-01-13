@@ -1,4 +1,4 @@
-function spkS = get_ksphy_results_T(varargin)
+function spkS = get_ksphy_results_T(sess, varargin)
 % function get_ksphy_waveforms(sess_name)
 % For each bundle
     % 1. use sp = loadKSdir to get the spike times and cluster ids of all mua and good clusters
@@ -19,59 +19,65 @@ function spkS = get_ksphy_results_T(varargin)
 % get the syncing parameters
 % sync timestamps of timing variable
 
+%% PARSE INPUTS
 p = inputParser();
-addParameter(p, 'mda_dir', []); % directory with mda files used to create binaries
-addParameter(p, 'sess_dir', []); % parent directory w/ folders containing each bundle binary + kilosort output
+% parent directory w/ folders containing sorted sessions that each have sub
+% bundle binary + kilosort output
+addParameter(p, 'sess_dir', ''); 
 addParameter(p, 'overwrite', false); % whether to reload or overwrite results
 addParameter(p, 'rematch', false); % whether to reload or overwrite session match
-addParameter(p, 'curator_name', 'Tyler'); % name of person curating data
+addParameter(p, 'curator_name', 'Jess'); % name of person curating data
 parse(p,varargin{:});
 
-mda_dir     = p.Results.mda_dir;
-sess_dir    = p.Results.sess_dir;
+sorted_dir    = p.Results.sess_dir;
 curator     = p.Results.curator_name;
 overwrite   = p.Results.overwrite;
 rematch     = p.Results.rematch;
 
 if ~ispc
-    brody_dir   = '/Volumes/brody';
+   error('the paths for this fx are all specified for PC, change them and then comment this out')
+end
+
+%% LOCATE PATHS & FIND BEHAVIOR SESS
+% run find wireless session to get directory infomation, these are all
+% defuallt inputs, but incase you want to change them i've written it out
+sess_match = find_wireless_sess_J(sess, 'overwrite', '0', 'rat_name', 'W122', ...
+    'expmtr', 'Emily', 'behav_dir', 'Y:\RATTER\SoloData\Data\W122', ...
+    'mdas_dir', 'W:\jbreda\ephys\W122')
+
+% grab mda path from output
+save_path = sess_match.res.save_path
+[mda_dir, ~] = fileparts(save_path)
+
+% find kilosort info based on input or session name
+if isempty(sorted_dir)
+    sorted_dir_JB = 'Y:\jbreda\ephys\post_sort_analysis\find_wireless_sess_test\get_kphys_results_test'
+    sorted_sess_dir = fullfile(sorted_dir_JB, sess)
 else
-    brody_dir   = 'Y:\';
+    sorted_sess_dir = fullfile(sorted_dir, sess)
 end
-phys_dir    = fullfile(brody_dir,'/RATTER/PhysData');
+%% BUNDLE & CHANNEL INFO
+% I save my files as _firstbundle, _secondbundle, Tyler does _bundle1
+% _bundle2 so I need to iterate differntly than his code
 
-if ~exist(brody_dir)
-    warning(sprintf('can''t find brody directory: %s',brody_dir));
-end
+% bundles
+bndl_names = {'first' 'fourth' 'second' 'third'}
+bndl_dirfun = @(n_bndl) fullfile(sorted_sss_dir, sprintf('%s_%sbundle',sess_name,n_bndl));
 
-if isempty(sess_dir)
-    sess_name   = 'data_sdc_20190905_170428_fromSD';
-    ratname     = 'H191';
-    sorted_dir  = fullfile(phys_dir, 'Sorted');
-    sess_dir     = fullfile(sorted_dir, 'Ahmed/SpikeGadgets/', ratname, sess_name);
-end
-[~, sess_name] = fileparts(sess_dir);
+% channels
+mda_filefun = @(n_chan) fullfile(mda_dir, sprintf('%s.nt%i.mda',sess_name,n_chan));
 
-if isempty(mda_dir)
-    raw_dir     = fullfile(phys_dir, 'Raw');
-    mda_dir     = fullfile(raw_dir, 'Ahmed/SpikeGadgets/', [sess_name '.mda']);
-end
-
-
-bndl_dirfun = @(bb) fullfile(sess_dir, sprintf('%s_bundle%i',sess_name,bb));
-mda_filefun = @(tt) fullfile(mda_dir, sprintf('%s.nt%i.mda',sess_name,tt) );
-save_name   = fullfile(sess_dir,'ksphy_clusters.mat');
-
+% where to save info & overwrite checl
+save_name   = fullfile(sorted_sess_dir,'ksphy_clusters.mat');
 if exist(save_name,'file') && ~overwrite
     load(save_name,'spkS');
     return
 end
-
-
+%%
 uv_per_bit  = 1;
 warning('uv per bit conversion ratio unknown')
 nchperb     = 32;
-nbundles    = 4;
+nbundles    = 4; % I might not always have nbundles should make this flexible
 wave_x      = -6:25;
 nwaves      = 10000;
 ch2tt       = @(ch, bb) ceil(ch / 4) + (bb-1)*nchperb/4;
@@ -79,10 +85,7 @@ ch2tt       = @(ch, bb) ceil(ch / 4) + (bb-1)*nchperb/4;
 % tetrodes we need to load to get cluster waveforms
 %S(nbundles) = struct();
 
-sess_match  = find_wireless_sess(sess_name,'overwrite',rematch);
-
-
-notes_path  = fullfile(sess_dir,'cluster_notes.txt');
+notes_path  = fullfile(sorted_sess_dir,'cluster_notes.txt');
 notes_fid   = fopen(notes_path,'w+');
 ratname     = sess_match.ratname;
 sessiondate = datestr(['20' sess_match.date_str([1 2]) '-' sess_match.date_str([3 4]) ...
