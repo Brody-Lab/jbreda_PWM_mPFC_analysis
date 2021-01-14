@@ -118,7 +118,7 @@ if strcmp(sess(1:4),'data')
         ind = regexp(sess,'\d\d\d\d\d\d_\d\d');
     end
     date_str = sess(ind + (0:5));
-    fprintf('name in data_YYMMDD format; session data is: %s',date_str)
+    fprintf('name in data_YYMMDD format; session date is: %s',date_str)
     
 else
     date_str = sess([14 15 6 7 9 10]);
@@ -236,7 +236,10 @@ for ss = 0:(ndays_back-1);
             totaldur(inc)       = 0;
         else
             max_residual(inc)   = max(abs(ttl_trode_fsm-ttls_fsmall));
-            totaldur(inc)       = (max(ttls_fsmall)-min(ttls_fsmall))/60; % in minutes
+            totaldur(inc)       = (max(ttls_fsmall)-min(ttls_fsmall))/60;% in minutes
+            ttls_trodes_plot{inc} = ttl_trodesall; % save out ttls for plotting if match is found
+            ttls_fsm_plot{inc}    = ttls_fsmall;
+            
         end
     end
 end
@@ -272,7 +275,24 @@ else
         sessid          =  bdata(['select sessid from sessions where data_file="'  res.behfile(1:end-4) '"']);
         res.sessid      = sessid;
     end
-    res.sessiondate = sessiondate;           % date in YYYY-MM-DD
+    res.sessiondate = sessiondate; % date in YYYY-MM-DD
+    
+    
+    %PLOT
+    figure(1);
+    % trodes
+    ax1=subplot(2,1,1);
+    y = zeros(size(ttls_trodes_plot{match_ind}));
+    scatter(ttls_trodes_plot{match_ind}, y,'g', '*')
+    title('trodes ttl')
+    %fsm
+    ax2=subplot(2,1,2);
+    y2 = zeros(size(ttls_fsm_plot{match_ind}));
+    scatter(ttls_fsm_plot{match_ind}, y2, 'k', '*')
+    title('bdata ttl')
+    % save pout
+    linkaxes([ax1,ax2],'x');
+    saveas(gcf,fullfile(mda_dir, 'ttl_alignment'),'jpeg')
     
 end
 
