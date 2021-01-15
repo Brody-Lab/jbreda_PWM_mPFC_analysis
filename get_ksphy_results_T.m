@@ -17,9 +17,10 @@ function spkS = get_ksphy_results_T(sess, varargin)
         % an optional argument
 
 % get the syncing parameters
-% sync timestamps of timing variable
+% sync timestamps of timing variable %maybe add figure path to find_wireles
 
 %% PARSE INPUTS
+sess = 'data_sdc_20190902_145404_fromSD' % for debugging
 p = inputParser();
 % parent directory w/ folders containing sorted sessions that each have sub
 % bundle binary + kilosort output
@@ -41,17 +42,17 @@ end
 %% LOCATE PATHS & FIND BEHAVIOR SESS
 % run find wireless session to get directory infomation, these are all
 % defuallt inputs, but incase you want to change them i've written it out
-sess_match = find_wireless_sess_J(sess, 'overwrite', '0', 'rat_name', 'W122', ...
-    'expmtr', 'Emily', 'behav_dir', 'Y:\RATTER\SoloData\Data\W122', ...
+sess_match = find_wireless_sess_J(sess, 'overwrite', 0, 'rat_name', 'W122', ...
+    'expmtr', 'Emily', 'behav_dir', 'Y:\RATTER\SoloData\Data\Emily', ...
     'mdas_dir', 'W:\jbreda\ephys\W122')
 
 % grab mda path from output
-save_path = sess_match.res.save_path
+save_path = sess_match.save_path
 [mda_dir, ~] = fileparts(save_path)
 
 % find kilosort info based on input or session name
 if isempty(sorted_dir)
-    sorted_dir_JB = 'Y:\jbreda\ephys\post_sort_analysis\find_wireless_sess_test\get_kphys_results_test'
+    sorted_dir_JB = 'Y:\jbreda\ephys\post_sort_analysis\get_kphys_results_test'
     sorted_sess_dir = fullfile(sorted_dir_JB, sess)
 else
     sorted_sess_dir = fullfile(sorted_dir, sess)
@@ -61,11 +62,10 @@ end
 % _bundle2 so I need to iterate differntly than his code
 
 % bundles
-bndl_names = {'first' 'fourth' 'second' 'third'}
-bndl_dirfun = @(n_bndl) fullfile(sorted_sess_dir, sprintf('%s_%sbundle',sess_name,n_bndl));
+bndl_dirfun = @(bb) fullfile(sorted_sess_dir, sprintf('%s_bundle%i_forkilosort',sess,bb));
 
 % channels
-mda_filefun = @(n_chan) fullfile(mda_dir, sprintf('%s.nt%i.mda',sess_name,n_chan));
+mda_filefun = @(n_chan) fullfile(mda_dir, sprintf('%s.nt%i.mda',sess,n_chan));
 
 % where to save info & overwrite check
 save_name   = fullfile(sorted_sess_dir,'ksphy_clusters.mat');
