@@ -3,8 +3,9 @@
 repository for analysis of PWM ephys data (as of 2020_1_6 this is for wireless mPFC tetrode recordings)
 
 # TODO
-* run file through `get_ksphy_results` with new input structure & file naming
 * get preprocessed 0ing info
+* adjust get_ksphy_results to deal w/ sq
+* assess if filtering in get_ksphy_results is appropriate for these sessions
 
 ## Assumptions
 
@@ -26,6 +27,11 @@ repository for analysis of PWM ephys data (as of 2020_1_6 this is for wireless m
 
 3. `get_ksphy_results.m`
 ***WORKING HERE***
+- got it to run on a session on 1/15/2020
+- using a lot of `phyHelpers` from [here](https://github.com/cortex-lab/spikes/tree/master/preprocessing/phyHelpers) and wrote my own `readClusterSpikeQualityCSV.m`
+- issues with sq sometimes having a 0 output and that messes up single/multi assignments further down
+- Line 160 on needs a closer look
+  - is do I want to do that filter..?
 
 
 ## utils
