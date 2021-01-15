@@ -25,7 +25,7 @@ p = inputParser();
 % parent directory w/ folders containing sorted sessions that each have sub
 % bundle binary + kilosort output
 addParameter(p, 'sess_dir', ''); 
-addParameter(p, 'overwrite', false); % whether to reload or overwrite results
+addParameter(p, 'overwrite', true); % whether to reload or overwrite results
 addParameter(p, 'rematch', false); % whether to reload or overwrite session match
 addParameter(p, 'curator_name', 'Jess'); % name of person curating data
 parse(p,varargin{:});
@@ -52,17 +52,17 @@ save_path = sess_match.save_path
 
 % find kilosort info based on input or session name
 if isempty(sorted_dir)
-    sorted_dir_JB = 'Y:\jbreda\ephys\post_sort_analysis\get_kphys_results_test'
-    sorted_sess_dir = fullfile(sorted_dir_JB, sess)
+    sorted_dir_JB = 'Y:\jbreda\ephys\post_sort_analysis\get_kphys_results_test';
+    sorted_sess_dir = fullfile(sorted_dir_JB, sess);
 else
-    sorted_sess_dir = fullfile(sorted_dir, sess)
+    sorted_sess_dir = fullfile(sorted_dir, sess);
 end
 %% BUNDLE & CHANNEL INFO
 % I save my files as _firstbundle, _secondbundle, Tyler does _bundle1
 % _bundle2 so I need to iterate differntly than his code
 
 % bundles
-bndl_dirfun = @(bb) fullfile(sorted_sess_dir, sprintf('%s_bundle%i_forkilosort',sess,bb));
+bndl_dirfun = @(n_bndl) fullfile(sorted_sess_dir, sprintf('%s_bundle%i_forkilosort',sess,n_bndl));
 
 % channels
 mda_filefun = @(n_chan) fullfile(mda_dir, sprintf('%s.nt%i.mda',sess,n_chan));
@@ -77,10 +77,10 @@ end
 uv_per_bit  = 1;
 warning('uv per bit conversion ratio unknown')
 nchperb     = 32;
-nbundles    = 4; % I might not always have nbundles should make this flexible
-wave_x      = -6:25;
-nwaves      = 10000;
-ch2tt       = @(ch, bb) ceil(ch / 4) + (bb-1)*nchperb/4;
+nbundles    = 4; % I might not always have nbundles should make this flexible?
+wave_x      = -6:25; % n of timepoints relative to each spike that get included in the bdata cells and spktimes database
+nwaves      = 10000; % how many waveforms to store/use to compute the average waveform
+ch2tt       = @(ch, n_bndl) ceil(ch / 4) + (n_bndl-1)*nchperb/4;
 % Loop over bundles to get cluster information and figure out which
 % tetrodes we need to load to get cluster waveforms
 %S(nbundles) = struct();
@@ -91,31 +91,39 @@ ratname     = sess_match.ratname;
 sessiondate = datestr(['20' sess_match.date_str([1 2]) '-' sess_match.date_str([3 4]) ...
     '-' sess_match.date_str([5 6])],29);
 
-
-
 fprintf(notes_fid,'%s\n%s\n%s\n\n',sessiondate, ratname, curator);
 
 
-for bb = 1:nbundles;
+for n_bndl = 1:nbundles;
     % load up spike times and cluster ids from phy
-    bundle_dir  = bndl_dirfun(bb);
+    bundle_dir  = bndl_dirfun(n_bndl);
     cinf_path  = fullfile(bundle_dir,'cluster_info.tsv');
     if ~exist(cinf_path)
-        in = input(sprintf('couldn''t find anything for bundle %i. want to continue?', bb),'s');
+        in = input(sprintf('couldn''t find anything for bundle %i. want to continue?', n_bndl),'s');
         if lower(in) == 'y'
             continue;
         else
             error();
         end
     end
-    sp          = loadKSdir(bundle_dir);
-    sp.mua      = sp.cgs == 1;
-    sp.single   = sp.cgs == 2;
+    
+    sp = loadKSdir(bundle_dir); %edited load CSV to add sq info if possible
+    
+    if isfield(sp, 'csq') % if there is an spike quality file
+        sp.mua      = sp.csq == 1; %sq info used here (defualt is cgs.mua)
+        sp.single   = sp.csq == 2;
+        sp.sort_metric = 'spike_quality'
+    else
+        sp.mua      = sp.cgs == 1;
+        sp.single  = sp.cgs == 2;
+        sp.csq = [] % need to do this to keep structure size stable
+        sp.sort_metric = 'cluster_group'
+    end
 
     % Find which tetrode each cluster is on using cluster info file
     if ~exist(cinf_path,'file')
         prompt = sprintf(['could not find cluster info file for bundle %i. '...
-            'Do you want to continue? (y/n)'],bb);
+            'Do you want to continue? (y/n)'],n_bndl); %make sure files w/ no cells have this?
         in = input(prompt, 's');
         if lower(in) == 'y'
             continue
@@ -124,7 +132,7 @@ for bb = 1:nbundles;
         end
     end
     fid = fopen(cinf_path);
-    C   = textscan(fid, '%s%s%s%s%s%s%s%s%s%s%s');
+    C   = textscan(fid, '%s%s%s%s%s%s%s%s%s%s%s%s'); %extra string here bc I added a 'sq' column
     assert(~isempty(strfind(C{1}{1}, 'id'))); % these ids match the phy gui
     
     cinfo_id = cellfun(@str2num,C{1}(2:end));
@@ -142,10 +150,10 @@ for bb = 1:nbundles;
         clu_ix      = sp.cids(cc); % get phy cluster id
         info_ix     = cinfo_id == clu_ix; % find index for this cluster in info file
         sp.ch1(cc)  = cinf_ch(info_ix) + 1; % best channel for cluster (indexed from 1)
-        sp.tt1(cc)  = ch2tt(sp.ch1(cc),bb); % convert best channel num to best tetrode num
+        sp.tt1(cc)  = ch2tt(sp.ch1(cc),n_bndl); % convert best channel num to best tetrode num
         sp.nspk(cc) = sum(sp.clu == clu_ix);   
     end
-    S(bb) = sp;
+    S(n_bndl) = sp;
 end
 clear sp
 
@@ -162,24 +170,24 @@ nactivetts  = length(unique([S.tt1]));
 spkS(nactivetts) = struct();
 
 tt_ix = 0;
-for bb = 1:length(S)
-    if isempty(S(bb))
-        warning(fprintf('skipping bundle %i', bb));
+for n_bndl = 1:length(S)
+    if isempty(S(n_bndl))
+        warning(fprintf('skipping bundle %i', n_bndl));
         continue; 
     end
-    active_tts = unique(S(bb).tt1);
-    fs = S(bb).sample_rate;
+    active_tts = unique(S(n_bndl).tt1);
+    fs = S(n_bndl).sample_rate;
     % loop over trodes in this bundle with clusters
-    for tt = 1:length(active_tts)
+    for n_chan = 1:length(active_tts)
         
         % Figure out which clusters are on this tetrode
         tt_ix        = tt_ix + 1;
-        this_tt     = active_tts(tt);
+        this_tt     = active_tts(n_chan);
         this_mda    = mda_filefun(this_tt);
-        this_tt_ind = S(bb).tt1 == this_tt;
-        active_clu  = S(bb).cids(this_tt_ind);
-        is_mua      = S(bb).mua(this_tt_ind);
-        is_single   = S(bb).single(this_tt_ind);
+        this_tt_ind = S(n_bndl).tt1 == this_tt;
+        active_clu  = S(n_bndl).cids(this_tt_ind);
+        is_mua      = S(n_bndl).mua(this_tt_ind);
+        is_single   = S(n_bndl).single(this_tt_ind);
         
         fprintf(notes_fid, "TT%i - \n",this_tt);
         
@@ -194,7 +202,7 @@ for bb = 1:length(S)
         toc
         
         % intialize variables of interest for this tetrode
-        tt_nspk  = sum(S(bb).nspk(this_tt_ind));
+        tt_nspk  = sum(S(n_bndl).nspk(this_tt_ind));
         ev_st    = nan(tt_nspk,1);
         ev_ind   = nan(tt_nspk,1);
         tt_clu   = nan(tt_nspk,1);
@@ -214,7 +222,7 @@ for bb = 1:length(S)
             fprintf(notes_fid, clus_label);
             
             this_cid    = active_clu(cc);
-            this_st     = S(bb).st(S(bb).clu == this_cid);
+            this_st     = S(n_bndl).st(S(n_bndl).clu == this_cid);
             this_spk_ix = round(this_st * fs);
             this_nspk   = length(this_st);
             start_ind   = end_ind + 1;

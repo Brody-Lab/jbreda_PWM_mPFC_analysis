@@ -37,7 +37,7 @@ function res = find_wireless_sess_J(sess, varargin)
 % ---------------------
 %% PARSE INPUTS
 p = inputParser();
-addParameter(p,'overwrite','0'); % defualt is skip (0) if alrady run
+addParameter(p,'overwrite',0); % defualt is skip (0) if alrady run
 addParameter(p,'rat_name', 'W122'); % if multiple rats: {'H191','H176'}
 addParameter(p,'expmtr','Emily');
 addParameter(p,'behav_dir',''); % will assign below if empty
