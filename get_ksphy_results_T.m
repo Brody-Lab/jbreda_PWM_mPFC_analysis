@@ -73,7 +73,7 @@ if exist(save_name,'file') && ~overwrite
     load(save_name,'spkS');
     return
 end
-%%
+%% INTERACT W/ PHY & FIND CHANNELS WITH CELLS
 uv_per_bit  = 1;
 warning('uv per bit conversion ratio unknown')
 nchperb     = 32;
@@ -157,6 +157,7 @@ for n_bndl = 1:nbundles;
 end
 clear sp
 
+%% STOPPED HERE
 % create a filter for the waveforms
 assert(sum(diff([S.sample_rate]))==0) % check that all the files have same sampling rate
 fs          = S(1).sample_rate;
