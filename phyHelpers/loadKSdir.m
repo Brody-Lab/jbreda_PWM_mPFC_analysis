@@ -9,7 +9,7 @@ else
 end
 
 if ~isfield(params, 'excludeNoise')
-    params.excludeNoise = true;
+    params.excludeNoise = 1;
 end
 if ~isfield(params, 'loadPCs')
     params.loadPCs = false;
@@ -39,19 +39,7 @@ else
     pcFeatInd = [];
 end
 
-%% ADDED BY JRB ON 2021-01-15 to use spike quality file rather than cluster group file for MUA/single info
-csqFile = '';
 
-if exist(fullfile(ksDir, 'cluster_sq.csv')) 
-    csqFile = fullfile(ksDir, 'cluster_sq.csv');
-end
-if exist(fullfile(ksDir, 'cluster_sq.tsv')) 
-   csqFile = fullfile(ksDir, 'cluster_sq.tsv');
-end
-if ~isempty(csqFile)
-    [cids_sq, csq] = readClusterSpikeQualityCSV(csqFile);
-    spikeStruct.csq = csq;
-end
 %%
 cgsFile = '';
 if exist(fullfile(ksDir, 'cluster_groups.csv')) 
@@ -60,6 +48,7 @@ end
 if exist(fullfile(ksDir, 'cluster_group.tsv')) 
    cgsFile = fullfile(ksDir, 'cluster_group.tsv');
 end 
+
 if ~isempty(cgsFile)
     [cids, cgs] = readClusterGroupsCSV(cgsFile);
 
@@ -88,7 +77,43 @@ else
     cids = unique(spikeTemplates);
     cgs = 3*ones(size(cids));
 end
+
+%% ADDED BY JRB ON 2021-01-15 to use spike quality file rather than cluster group file for MUA/single info
+csqFile = '';
+
+if exist(fullfile(ksDir, 'cluster_sq.csv')) 
+    csqFile = fullfile(ksDir, 'cluster_sq.csv');
+end
+if exist(fullfile(ksDir, 'cluster_sq.tsv')) 
+   csqFile = fullfile(ksDir, 'cluster_sq.tsv');
+end
+
+if ~isempty(csqFile)
     
+    [cids_sq, csq] = readClusterSpikeQualityCSV(csqFile);
+
+    if params.excludeNoise
+        noiseClusters = cids_sq(csq==0);
+
+        st = st(~ismember(clu, noiseClusters));
+        spikeTemplates = spikeTemplates(~ismember(clu, noiseClusters));
+        tempScalingAmps = tempScalingAmps(~ismember(clu, noiseClusters));        
+
+        if params.loadPCs
+            pcFeat = pcFeat(~ismember(clu, noiseClusters), :,:);
+            %pcFeatInd = pcFeatInd(~ismember(cids, noiseClusters),:);
+        end
+
+        clu = clu(~ismember(clu, noiseClusters));
+        csq = csq(~ismember(cids_sq, noiseClusters));
+        cids_sq = cids_sq(~ismember(cids_sq, noiseClusters));
+    end
+    
+    spikeStruct.csq = csq; 
+    spikeStruct.cids = cids_sq;
+else
+    spikeStruct.cids = cids;
+end
 
 coords = readNPY(fullfile(ksDir, 'channel_positions.npy'));
 ycoords = coords(:,2); xcoords = coords(:,1);
@@ -101,7 +126,6 @@ spikeStruct.spikeTemplates = spikeTemplates;
 spikeStruct.clu = clu;
 spikeStruct.tempScalingAmps = tempScalingAmps;
 spikeStruct.cgs = cgs;
-spikeStruct.cids = cids;
 spikeStruct.xcoords = xcoords;
 spikeStruct.ycoords = ycoords;
 spikeStruct.temps = temps;

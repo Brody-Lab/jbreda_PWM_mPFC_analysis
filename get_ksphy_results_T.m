@@ -33,6 +33,17 @@ function spkS = get_ksphy_results_T(sess, varargin)
 % - curator_name = name of person curating the data as a string
 % !!NOTE!! see call for find_wireless_sess_J to adjust input to that fx as
 % needed
+%
+% RETURNS:
+% 
+% 
+% EXAMPLE CALL:
+% 
+%
+% TODO:
+% - line 182 onward
+%
+% assumes you are running on a PC!
 
 
 %% PARSE INPUTS
@@ -117,15 +128,15 @@ for n_bndl = 1:nbundles;
     bundle_dir  = bndl_dirfun(n_bndl);
     cinf_path  = fullfile(bundle_dir,'cluster_info.tsv');
     
-    if ~exist(cinf_path)
-        sprintf('couldn''t find anything for bundle %i, will continue.', n_bndl)   
-    end
     
     % Phy helper will load spike quality/cluster group info per JRB edits
+    % the function currently exludes any templates marked as Noise
     sp = loadKSdir(bundle_dir); 
     
-    if isfield(sp, 'csq') % if there is an spike quality file, use it
-        sp.mua      = sp.csq == 1; %sq info used here (defualt is cgs.mua)
+    % if there is an spike quality file, use it to assign MUA/Single
+    % NOTE: specific to how JRB sorts!
+    if isfield(sp, 'csq') 
+        sp.mua      = sp.csq == 1; 
         sp.single   = sp.csq == 2;
         sp.sort_metric = 'spike_quality'
     else
@@ -134,41 +145,37 @@ for n_bndl = 1:nbundles;
         sp.csq = [] % need to do this to keep structure size stable
         sp.sort_metric = 'cluster_group'
     end
-
-    % Find which tetrode each cluster is on using cluster info (take out)
-    if ~exist(cinf_path,'file')
-        prompt = sprintf(['could not find cluster info file for bundle %i. '...
-            'Do you want to continue? (y/n)'],n_bndl); 
-        in = input(prompt, 's');
-        if lower(in) == 'y'
-            continue
-        else
-            return
-        end
+    
+    if ~exist(cinf_path)
+        sprintf('couldn''t find any cluster_info for bundle %i, will continue.', n_bndl)   
     end
+
+    % access cluster_info.tsv & extract for single/muas
     fid = fopen(cinf_path);
-    C   = textscan(fid, '%s%s%s%s%s%s%s%s%s%s%s%s'); %extra string here bc I added a 'sq' column
+    C   = textscan(fid, '%s%s%s%s%s%s%s%s%s%s%s%s'); % JRB has extra string here bc dded a 'sq' column
+    
     assert(~isempty(strfind(C{1}{1}, 'id'))); % these ids match the phy gui, make sure they are there
-    
     cinfo_id = cellfun(@str2num,C{1}(2:end)); % get ids
-    assert(strcmp(C{6}(1), 'ch')); % channel w/ strongest template
     
-    cinf_ch = cellfun(@str2num, C{6}(2:end)); % get strongest template info
-    ncids   = length(sp.cids);    % number of good/muas present, initilize space based off that
+    assert(strcmp(C{6}(1), 'ch'));            % channel w/ strongest template
+    cinf_ch = cellfun(@str2num, C{6}(2:end)); % get strongest templates 
+    
+    % initialize space
+    ncids   = length(sp.cids);    % number of good/muas present
     sp.ch1  = nan(size(sp.cids)); % 1 indexed channel id (note: it's 0 indexed in phy)
     sp.tt1  = nan(size(sp.cids)); % 1 indexed tetrode id
-    sp.cid1 = nan(size(sp.cgs)); % 1 indexed cluster id. numbers span bundles so we don't have non-unique cluster ids
-    sp.nspk = nan(size(sp.cgs)); % how many spikes are in each cluster
+    sp.cid1 = nan(size(sp.cgs));  % 1 indexed cluster id. numbers span bundles so we don't have non-unique cluster ids
+    sp.nspk = nan(size(sp.cgs));  % how many spikes are in each cluster
 
     % loop over good/mua clusters
-    for cc = 1:ncids   % bc cids is coming from cluster_group, this will be an issue shoudl make if/else for sq to be dom.
-        clu_ix      = sp.cids(cc); % get phy cluster id
-        info_ix     = cinfo_id == clu_ix; % find index for this cluster in info file
-        sp.ch1(cc)  = cinf_ch(info_ix) + 1; % best channel for cluster (indexed from 1)
+    for cc = 1:ncids  
+        clu_ix      = sp.cids(cc);              % get phy cluster id
+        info_ix     = cinfo_id == clu_ix;       % find index for this cluster in info file
+        sp.ch1(cc)  = cinf_ch(info_ix) + 1;     % best channel for cluster (indexed from 1)
         sp.tt1(cc)  = ch2tt(sp.ch1(cc),n_bndl); % convert best channel num to best tetrode num
-        sp.nspk(cc) = sum(sp.clu == clu_ix);   
+        sp.nspk(cc) = sum(sp.clu == clu_ix);    % get number of spikes for that cluster  
     end
-    S(n_bndl) = sp;
+    S(n_bndl) = sp;                             % save out
 end
 clear sp
 
