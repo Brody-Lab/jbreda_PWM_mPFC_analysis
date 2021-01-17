@@ -44,7 +44,7 @@ addParameter(p, 'overwrite', true);
 addParameter(p, 'curator_name', 'Jess'); 
 parse(p,varargin{:});
 
-sorted_dir    = p.Result.sorted_dir;
+sorted_dir  = p.Results.sorted_dir;
 curator     = p.Results.curator_name;
 overwrite   = p.Results.overwrite;
 
@@ -55,7 +55,7 @@ end
 %% LOCATE PATHS & FIND BEHAVIOR SESS
 % run find wireless session to get directory infomation, these are all
 % defuallt inputs, but incase you want to change them i've written it out
-sess_match = find_wireless_sess_J(sess, 'overwrite', rematch, 'rat_name', 'W122', ...
+sess_match = find_wireless_sess_J(sess, 'overwrite', 0, 'rat_name', 'W122', ...
     'expmtr', 'Emily', 'behav_dir', 'Y:\RATTER\SoloData\Data\Emily', ...
     'mdas_dir', 'W:\jbreda\ephys\W122')
 
@@ -118,8 +118,7 @@ for n_bndl = 1:nbundles;
     cinf_path  = fullfile(bundle_dir,'cluster_info.tsv');
     
     if ~exist(cinf_path)
-        sprintf('couldn''t find anything for bundle %i, will continue?', n_bndl),'s');
-        continue;
+        sprintf('couldn''t find anything for bundle %i, will continue.', n_bndl)   
     end
     
     % Phy helper will load spike quality/cluster group info per JRB edits
@@ -136,10 +135,10 @@ for n_bndl = 1:nbundles;
         sp.sort_metric = 'cluster_group'
     end
 
-    % Find which tetrode each cluster is on using cluster info file
+    % Find which tetrode each cluster is on using cluster info (take out)
     if ~exist(cinf_path,'file')
         prompt = sprintf(['could not find cluster info file for bundle %i. '...
-            'Do you want to continue? (y/n)'],n_bndl); %make sure files w/ no cells have this?
+            'Do you want to continue? (y/n)'],n_bndl); 
         in = input(prompt, 's');
         if lower(in) == 'y'
             continue
@@ -149,20 +148,20 @@ for n_bndl = 1:nbundles;
     end
     fid = fopen(cinf_path);
     C   = textscan(fid, '%s%s%s%s%s%s%s%s%s%s%s%s'); %extra string here bc I added a 'sq' column
-    assert(~isempty(strfind(C{1}{1}, 'id'))); % these ids match the phy gui
+    assert(~isempty(strfind(C{1}{1}, 'id'))); % these ids match the phy gui, make sure they are there
     
-    cinfo_id = cellfun(@str2num,C{1}(2:end));
+    cinfo_id = cellfun(@str2num,C{1}(2:end)); % get ids
     assert(strcmp(C{6}(1), 'ch')); % channel w/ strongest template
     
-    cinf_ch = cellfun(@str2num, C{6}(2:end));
-    ncids   = length(sp.cids);
+    cinf_ch = cellfun(@str2num, C{6}(2:end)); % get strongest template info
+    ncids   = length(sp.cids);    % number of good/muas present, initilize space based off that
     sp.ch1  = nan(size(sp.cids)); % 1 indexed channel id (note: it's 0 indexed in phy)
     sp.tt1  = nan(size(sp.cids)); % 1 indexed tetrode id
     sp.cid1 = nan(size(sp.cgs)); % 1 indexed cluster id. numbers span bundles so we don't have non-unique cluster ids
     sp.nspk = nan(size(sp.cgs)); % how many spikes are in each cluster
 
     % loop over good/mua clusters
-    for cc = 1:ncids
+    for cc = 1:ncids   % bc cids is coming from cluster_group, this will be an issue shoudl make if/else for sq to be dom.
         clu_ix      = sp.cids(cc); % get phy cluster id
         info_ix     = cinfo_id == clu_ix; % find index for this cluster in info file
         sp.ch1(cc)  = cinf_ch(info_ix) + 1; % best channel for cluster (indexed from 1)
