@@ -1,5 +1,9 @@
 function spkS = get_ksphy_results_T(sess, varargin)
 % function get_ksphy_waveforms(sess_name)
+%
+% Written by Tyler Boyd-Meridith and adjusted by Jess Breda on 2021-01-15
+% for analysis of wireless tetrode data
+% -----Tyler's notes-----
 % For each bundle
     % 1. use sp = loadKSdir to get the spike times and cluster ids of all mua and good clusters
         % convert sp.st into an index into the mda file (might be some
@@ -18,22 +22,31 @@ function spkS = get_ksphy_results_T(sess, varargin)
 
 % get the syncing parameters
 % sync timestamps of timing variable %maybe add figure path to find_wireles
+% --------------------
+% INPUT PARAMETERS:
+% - sess = name of sorted session you'd like to align & get info for
+%
+% OPTIONAL PARAMETERS:
+% - sorted_dir =  parent directory w/ folders containing sorted sessions 
+% each have sub folder sof reach bundle with kilsort output
+% - overwrite = T/F whether to overwrite results of this fx if already run
+% - curator_name = name of person curating the data as a string
+% !!NOTE!! see call for find_wireless_sess_J to adjust input to that fx as
+% needed
+
 
 %% PARSE INPUTS
-sess = 'data_sdc_20190902_145404_fromSD' % for debugging
+sess = 'data_sdc_20190902_145404_fromSD' % for debugging comment out later
+
 p = inputParser();
-% parent directory w/ folders containing sorted sessions that each have sub
-% bundle binary + kilosort output
-addParameter(p, 'sess_dir', ''); 
-addParameter(p, 'overwrite', true); % whether to reload or overwrite results
-addParameter(p, 'rematch', false); % whether to reload or overwrite session match
-addParameter(p, 'curator_name', 'Jess'); % name of person curating data
+addParameter(p, 'sorted_dir', ''); 
+addParameter(p, 'overwrite', true); 
+addParameter(p, 'curator_name', 'Jess'); 
 parse(p,varargin{:});
 
-sorted_dir    = p.Results.sess_dir;
+sorted_dir    = p.Result.sorted_dir;
 curator     = p.Results.curator_name;
 overwrite   = p.Results.overwrite;
-rematch     = p.Results.rematch;
 
 if ~ispc
    error('the paths for this fx are all specified for PC, change them and then comment this out')
@@ -42,7 +55,7 @@ end
 %% LOCATE PATHS & FIND BEHAVIOR SESS
 % run find wireless session to get directory infomation, these are all
 % defuallt inputs, but incase you want to change them i've written it out
-sess_match = find_wireless_sess_J(sess, 'overwrite', 0, 'rat_name', 'W122', ...
+sess_match = find_wireless_sess_J(sess, 'overwrite', rematch, 'rat_name', 'W122', ...
     'expmtr', 'Emily', 'behav_dir', 'Y:\RATTER\SoloData\Data\Emily', ...
     'mdas_dir', 'W:\jbreda\ephys\W122')
 
@@ -57,15 +70,26 @@ if isempty(sorted_dir)
 else
     sorted_sess_dir = fullfile(sorted_dir, sess);
 end
-%% BUNDLE & CHANNEL INFO
-% I save my files as _firstbundle, _secondbundle, Tyler does _bundle1
-% _bundle2 so I need to iterate differntly than his code
+%% BUNDLE, CHANNEL & SAVING INFO
 
-% bundles
+% global vars
+uv_per_bit  = 1;
+warning('uv per bit conversion ratio unknown')
+nchperb     = 32;
+nbundles    = 4; 
+
+% make bundle dir (stored as sorted_sess_dir\sess_name_bundle1_forkilossort)
 bndl_dirfun = @(n_bndl) fullfile(sorted_sess_dir, sprintf('%s_bundle%i_forkilosort',sess,n_bndl));
 
-% channels
+% make mda channel dir (sorted as mda_dir/session_name_nt1.mda)
 mda_filefun = @(n_chan) fullfile(mda_dir, sprintf('%s.nt%i.mda',sess,n_chan));
+
+% go from phy channels to tetrode channles (bc running separate bundles)
+ch2tt       = @(ch, n_bndl) ceil(ch / 4) + (n_bndl-1)*nchperb/4;
+
+% bdata save out info
+wave_x      = -6:25; % n time pts rel. to each spike that get included in the bdata cells and spktimes database
+nwaves      = 10000; % how many waveforms to store/use to compute the average waveform
 
 % where to save info & overwrite check
 save_name   = fullfile(sorted_sess_dir,'ksphy_clusters.mat');
@@ -73,18 +97,8 @@ if exist(save_name,'file') && ~overwrite
     load(save_name,'spkS');
     return
 end
-%% INTERACT W/ PHY & FIND CHANNELS WITH CELLS
-uv_per_bit  = 1;
-warning('uv per bit conversion ratio unknown')
-nchperb     = 32;
-nbundles    = 4; % I might not always have nbundles should make this flexible?
-wave_x      = -6:25; % n of timepoints relative to each spike that get included in the bdata cells and spktimes database
-nwaves      = 10000; % how many waveforms to store/use to compute the average waveform
-ch2tt       = @(ch, n_bndl) ceil(ch / 4) + (n_bndl-1)*nchperb/4;
-% Loop over bundles to get cluster information and figure out which
-% tetrodes we need to load to get cluster waveforms
-%S(nbundles) = struct();
 
+% where to save cluster_notes file & adding base info to it
 notes_path  = fullfile(sorted_sess_dir,'cluster_notes.txt');
 notes_fid   = fopen(notes_path,'w+');
 ratname     = sess_match.ratname;
@@ -93,23 +107,25 @@ sessiondate = datestr(['20' sess_match.date_str([1 2]) '-' sess_match.date_str([
 
 fprintf(notes_fid,'%s\n%s\n%s\n\n',sessiondate, ratname, curator);
 
+%% INTERACT W/ PHY & FIND CHANNELS WITH CELLS
 
+% Loop over bundles to get cluster information and figure out which
+% tetrodes we need to load to get cluster waveforms
 for n_bndl = 1:nbundles;
+    
     % load up spike times and cluster ids from phy
     bundle_dir  = bndl_dirfun(n_bndl);
     cinf_path  = fullfile(bundle_dir,'cluster_info.tsv');
+    
     if ~exist(cinf_path)
-        in = input(sprintf('couldn''t find anything for bundle %i. want to continue?', n_bndl),'s');
-        if lower(in) == 'y'
-            continue;
-        else
-            error();
-        end
+        sprintf('couldn''t find anything for bundle %i, will continue?', n_bndl),'s');
+        continue;
     end
     
-    sp = loadKSdir(bundle_dir); %edited load CSV to add sq info if possible
+    % Phy helper will load spike quality/cluster group info per JRB edits
+    sp = loadKSdir(bundle_dir); 
     
-    if isfield(sp, 'csq') % if there is an spike quality file
+    if isfield(sp, 'csq') % if there is an spike quality file, use it
         sp.mua      = sp.csq == 1; %sq info used here (defualt is cgs.mua)
         sp.single   = sp.csq == 2;
         sp.sort_metric = 'spike_quality'
