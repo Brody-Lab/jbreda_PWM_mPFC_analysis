@@ -249,20 +249,20 @@ for n_bndl = 1:length(S)
             fprintf(notes_fid, clus_label);
             
             this_cid    = active_clu(cc);                          % cluster id
-            this_st     = S(n_bndl).st(S(n_bndl).clu == this_cid); % cluster spike times
-            this_spk_ix = round(this_st * fs);                     % time idx for spike
+            this_st     = S(n_bndl).st(S(n_bndl).clu == this_cid); % cluster spike times in s
+            this_spk_ix = round(this_st * fs);                     % idx value for each spike
             this_nspk   = length(this_st);                         % n spikes
-            start_ind   = end_ind + 1;                             % created idx for varying n spikes per clus/tetrode
+            start_ind   = end_ind + 1;                             % create idx for varying size of spikes per clus/tetrode
             end_ind     = end_ind + this_nspk;
             ind         = start_ind:end_ind;                        
-            ev_st(ind)  = this_st;                                 % store n spikes                          
-            ev_ind(ind) = this_spk_ix;                             % store spike time idx
+            ev_st(ind)  = this_st;                                 % store spike times                          
+            ev_ind(ind) = this_spk_ix;                             % store spike idx
             tt_clu(ind) = ones(size(this_st)) * cc;                 
-            keep        = 1:min([nwaves this_nspk]);               % time window size to keep
+            keep        = 1:min([nwaves this_nspk]);               % time window size to keep for avg waveform
             rp_spk_ix   = this_spk_ix(randperm(this_nspk));        % picking 10000 rand spike idx to keep
             spk_ix_keep(cc,keep) = sort(rp_spk_ix(keep));
 
-            for ss = 1:length(keep)                                % for each rand spk idx, grab a window of size wave & sotre                          
+            for ss = 1:length(keep)                                % for each rand spk idx, grab a window of size wave & store                          
                 tmpWf = dat_filt(:,spk_ix_keep(cc,ss)+wave_x);
                 event_waves(cc,:,:,ss) = tmpWf;
             end
@@ -277,19 +277,19 @@ for n_bndl = 1:length(S)
         spkS(tt_ix).trodenum     = this_tt;    % tetrode number (1-32)
         spkS(tt_ix).event_ind    = ev_ind;     % spike time indices 
         spkS(tt_ix).event_ts     = ev_st;      % spike time in seconds
-        spkS(tt_ix).event_clus   = tt_clu;     % unsure
+        spkS(tt_ix).event_clus   = tt_clu;     % idk
         spkS(tt_ix).phy_cids     = active_clu; % phy cluster ids
         spkS(tt_ix).fs           = fs;         % sampling rate
         spkS(tt_ix).event_wave   = -event_waves;                 % idk
         spkS(tt_ix).wave_x       = wave_x;                       % n time point relative to spike included
         spkS(tt_ix).wave_t_s     = wave_x/fs;                    % wave_x in seconds
         spkS(tt_ix).waves_mn     = -nanmean(event_waves,4);      % mean waveform in uv
-        spkS(tt_ix).waves_std    = -nanstd(event_waves,[],4);    % stf of waveform
-        spkS(tt_ix).waves_clus   = 1:n_clu_on_tt;  % matches waves_mn to event_clus and cluster notes
-        spkS(tt_ix).waves_ind    = spk_ix_keep;    % indices of waves used to compute mean 
-        spkS(tt_ix).sess_match   = sess_match;                   % beahvior alignment ifp
-        spkS(tt_ix).sync_fit_m   = sess_match.spk2fsm_rt(1);     % alginment slope
-        spkS(tt_ix).sync_fit_b   = sess_match.spk2fsm_rt(2);     % alignent y int
+        spkS(tt_ix).waves_std    = -nanstd(event_waves,[],4);    % std of waveform
+        spkS(tt_ix).waves_clus   = 1:n_clu_on_tt;                % matches waves_mn to event_clus and cluster notes
+        spkS(tt_ix).waves_ind    = spk_ix_keep;                  % indices of waves used to compute mean 
+        spkS(tt_ix).sess_match   = sess_match;                   % beahvior alignment info
+        spkS(tt_ix).sync_fit_m   = sess_match.spk2fsm_rt(1);     % alignment slope
+        spkS(tt_ix).sync_fit_b   = sess_match.spk2fsm_rt(2);     % alignment y int
         spkS(tt_ix).event_ts_fsm = sess_match.spk2fsm_fn(ev_st); % spike times in fsm time in seconds
         spkS(tt_ix).clusnotespath = notes_path;                  % path to notes
 

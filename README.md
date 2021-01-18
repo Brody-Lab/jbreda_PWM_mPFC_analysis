@@ -29,9 +29,8 @@ repository for analysis of PWM ephys data (as of 2020_1_6 this is for wireless m
 ***WORKING HERE***
 - got it to run on a session on 1/15/2020
 - using a lot of `phyHelpers` from [here](https://github.com/cortex-lab/spikes/tree/master/preprocessing/phyHelpers) and wrote my own `readClusterSpikeQualityCSV.m`
-- issues with sq sometimes having a 0 output and that messes up single/multi assignments further down
-- Line 160 on needs a closer look
-  - is do I want to do that filter..?
+- filter?
+-
 
 
 ## utils
@@ -41,3 +40,7 @@ repository for analysis of PWM ephys data (as of 2020_1_6 this is for wireless m
 2. `mat_to_python_sess_info.ipynb` is a jupyter notebook that has code for important matlab structures and converting them to python dictionaries
 
 3.  `ttl_match.mat` is an output from `find_wireless_sess_J` that I used in the `mat_to_python` notebook above and sometimes use it to check and remind myself what the output is :D
+
+4. 'readmda'
+
+## phy helpers
