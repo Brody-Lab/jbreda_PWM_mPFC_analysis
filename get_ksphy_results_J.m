@@ -179,7 +179,7 @@ for n_bndl = 1:nbundles;
 end
 clear sp
 
-%% STOPPED HERE
+%% GET SPIKE TIMEs & IDXS
 % create a filter for the waveforms
 assert(sum(diff([S.sample_rate]))==0) % check that all the files have same sampling rate
 fs          = S(1).sample_rate;
@@ -230,7 +230,7 @@ for n_bndl = 1:length(S)
         
         % intialize variables of interest for this tetrode
         tt_nspk  = sum(S(n_bndl).nspk(this_tt_ind));
-        ev_st    = nan(tt_nspk,1);
+        ev_st    = nan(tt_nspk,1);   % need to find a way to deal with multiple clusters one tetrode
         ev_ind   = nan(tt_nspk,1);
         tt_clu   = nan(tt_nspk,1);
         

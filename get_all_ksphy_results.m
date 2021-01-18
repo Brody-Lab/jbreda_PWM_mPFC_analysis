@@ -1,6 +1,6 @@
 function get_all_ksphy_results(sess_path)
  %% ---------------------
-% Written by Jess Breda on 2020-01-19 to allow for get_ks_phyresults_J.m
+% Written by Jess Breda on 2020-01-19 to allow for get_ks_phy_results_J.m
 % to be run on multiple sessions. 
 %
 % INPUT PARAMETERS:
@@ -12,7 +12,7 @@ function get_all_ksphy_results(sess_path)
 % session along with cluster notes
 
 % EXAMPLE CALL:
-% find_all_wireless_sess('Y:\jbreda\ephys\post_sort_analysis\sorted_pre_bdata')
+% get_all_ksphy_results('Y:\jbreda\ephys\post_sort_analysis\sorted_pre_bdata')
 %
 % ---------------------
 
