@@ -103,7 +103,8 @@ wave_x      = -6:25; % n time pts rel. to each spike that get included in the bd
 nwaves      = 10000; % how many waveforms to store/use to compute the average waveform
 
 % where to save info & overwrite check
-save_name   = fullfile(sorted_sess_dir,'ksphy_clusters.mat');
+save_name  = fullfile(sorted_sess_dir,'ksphy_clusters.mat');
+save_name2 = fullfile(sorted_sess_dir,'ksphy_clusters_JB.mat');
 if exist(save_name,'file') && ~overwrite
     load(save_name,'spkS');
     return
@@ -196,6 +197,11 @@ nactivetts  = length(unique([S.tt1]));
 spkS(nactivetts) = struct();
 tt_ix = 0;
 
+% JB non SpkS storage
+n_clu = length([S.tt1]);
+PWMspkS(n_clu) = struct();
+clu_ix = 0;
+
 for n_bndl = 1:length(S)
     if isempty(S(n_bndl))
         warning(fprintf('skipping bundle %i', n_bndl));
@@ -211,7 +217,7 @@ for n_bndl = 1:length(S)
         tt_ix        = tt_ix + 1;                   
         this_tt     = active_tts(n_chan);            % find active channel    
         this_mda    = mda_filefun(this_tt);          % get mda file directory
-        this_tt_ind = S(n_bndl).tt1 == this_tt;      % if multiple cluster on same chan, grab correct one
+        this_tt_ind = S(n_bndl).tt1 == this_tt;      % create array of same size as number of clusters on chan
         active_clu  = S(n_bndl).cids(this_tt_ind);
         is_mua      = S(n_bndl).mua(this_tt_ind);    % determine cluster type
         is_single   = S(n_bndl).single(this_tt_ind);
@@ -230,7 +236,7 @@ for n_bndl = 1:length(S)
         
         % intialize variables of interest for this tetrode
         tt_nspk  = sum(S(n_bndl).nspk(this_tt_ind));
-        ev_st    = nan(tt_nspk,1);   % need to find a way to deal with multiple clusters one tetrode
+        ev_st    = nan(tt_nspk,1);   
         ev_ind   = nan(tt_nspk,1);
         tt_clu   = nan(tt_nspk,1);
         
@@ -239,8 +245,10 @@ for n_bndl = 1:length(S)
         event_waves = nan(n_clu_on_tt, nchpertt, length(wave_x), nwaves);
         spk_ix_keep = nan(n_clu_on_tt,nwaves); % indices used in mean waveform
 
-        end_ind     = 0; % keep track of last entry into tetrode
+        end_ind     = 0; % keep track of last entry into tetrode to add spike info to strcut
+     
         for cc = 1:n_clu_on_tt 
+            clu_ix = clu_ix + 1
             if is_mua(cc)
                 clus_label = sprintf('%i multi\n',cc);
             elseif is_single(cc)
@@ -266,6 +274,22 @@ for n_bndl = 1:length(S)
                 tmpWf = dat_filt(:,spk_ix_keep(cc,ss)+wave_x);
                 event_waves(cc,:,:,ss) = tmpWf;
             end
+            
+            PWMspkS(clu_ix).ratname = ratname;         % rat name  
+            PWMspkS(clu_ix).date = sess_match.date_str % ephys session date
+            PWMspkS(clu_ix).sessid = sess_match.sessid % behav session id
+            PWMspkS(clu_ix).recpath = this_mda;
+            PWMspkS(clu_ix).mua          = is_mua;     % is multi?
+            PWMspkS(cly_ix).single       = is_single;
+            PWMspkS(clu_ix).trodenum = this_tt;
+            PWMspkS(clu_ix).phy_cids  = active_clu;
+            PWMspkS(clu_ix).fs           = fs; 
+            PWMspkS(clu_ix).event_ind = this_spk_ix;
+            PWMspkS(clu_ix).ecent_ts = this_st;
+            PWMspkS(clu_ix).sync_fit_m   = sess_match.spk2fsm_rt(1);     % alignment slope
+            PWMspkS(clu_ix).sync_fit_b   = sess_match.spk2fsm_rt(2);     % alignment y int
+            PWMspkS(clu_ix).event_ts_fsm = sess_match.spk2fsm_fn(this_st); % spike times in fsm time in seconds
+            PWMspkS(clu_ix).clusnotespath = notes_path;  
             
             
         end
@@ -299,4 +323,5 @@ end
 fclose(notes_fid);
 
 save(save_name,'spkS');
+save(save_name2,'PWMspkS');
 
