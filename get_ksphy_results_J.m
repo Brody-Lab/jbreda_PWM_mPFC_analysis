@@ -47,8 +47,6 @@ function spkS = get_ksphy_results_J(sess, varargin)
 
 
 %% PARSE INPUTS
-sess = 'data_sdc_20190902_145404_fromSD' % for debugging comment out later
-
 p = inputParser();
 addParameter(p, 'sorted_dir', ''); 
 addParameter(p, 'overwrite', true); 
@@ -103,10 +101,11 @@ wave_x      = -6:25; % n time pts rel. to each spike that get included in the bd
 nwaves      = 10000; % how many waveforms to store/use to compute the average waveform
 
 % where to save info & overwrite check
-save_name  = fullfile(sorted_sess_dir,'ksphy_clusters.mat');
-save_name2 = fullfile(sorted_sess_dir,'ksphy_clusters_JB.mat');
-if exist(save_name,'file') && ~overwrite
+save_name  = fullfile(sorted_sess_dir,'ksphy_clusters_forbdata.mat');
+save_name2 = fullfile(sorted_sess_dir,'ksphy_clusters_foranalysis.mat');
+if exist(save_name,'file') && exist(save_name2, 'file') && ~overwrite
     load(save_name,'spkS');
+    load(save_name2,'PWMspkS');
     return
 end
 
@@ -180,7 +179,7 @@ for n_bndl = 1:nbundles;
 end
 clear sp
 
-%% GET SPIKE TIMEs & IDXS
+%% GET SPIKE TIMEs & IDXS and SAVE OUT
 % create a filter for the waveforms
 assert(sum(diff([S.sample_rate]))==0) % check that all the files have same sampling rate
 fs          = S(1).sample_rate;
@@ -239,12 +238,10 @@ for n_bndl = 1:length(S)
         ev_st    = nan(tt_nspk,1);   
         ev_ind   = nan(tt_nspk,1);
         tt_clu   = nan(tt_nspk,1);
-        
         nchpertt = 4;
         n_clu_on_tt = length(active_clu);
         event_waves = nan(n_clu_on_tt, nchpertt, length(wave_x), nwaves);
         spk_ix_keep = nan(n_clu_on_tt,nwaves); % indices used in mean waveform
-
         end_ind     = 0; % keep track of last entry into tetrode to add spike info to strcut
      
         for cc = 1:n_clu_on_tt 
@@ -275,35 +272,44 @@ for n_bndl = 1:length(S)
                 event_waves(cc,:,:,ss) = tmpWf;
             end
             
-            PWMspkS(clu_ix).ratname = ratname;         % rat name  
-            PWMspkS(clu_ix).date = sess_match.date_str % ephys session date
-            PWMspkS(clu_ix).sessid = sess_match.sessid % behav session id
-            PWMspkS(clu_ix).recpath = this_mda;
-            PWMspkS(clu_ix).mua          = is_mua;     % is multi?
-            PWMspkS(cly_ix).single       = is_single;
-            PWMspkS(clu_ix).trodenum = this_tt;
-            PWMspkS(clu_ix).phy_cids  = active_clu;
-            PWMspkS(clu_ix).fs           = fs; 
-            PWMspkS(clu_ix).event_ind = this_spk_ix;
-            PWMspkS(clu_ix).ecent_ts = this_st;
-            PWMspkS(clu_ix).sync_fit_m   = sess_match.spk2fsm_rt(1);     % alignment slope
-            PWMspkS(clu_ix).sync_fit_b   = sess_match.spk2fsm_rt(2);     % alignment y int
-            PWMspkS(clu_ix).event_ts_fsm = sess_match.spk2fsm_fn(this_st); % spike times in fsm time in seconds
-            PWMspkS(clu_ix).clusnotespath = notes_path;  
+            this_wave = event_waves(cc,:,:,:);                        % grab the wave for the cluster
             
-            
+            % this is JB ephys analysis struct (N clusters X items)
+            PWMspkS(clu_ix).ratname       = ratname;            % rat name  
+            PWMspkS(clu_ix).date          = sess_match.date_str % ephys session date
+            PWMspkS(clu_ix).sessid        = sess_match.sessid   % behav session id
+            PWMspkS(clu_ix).recpath       = this_mda;           % rec path
+            PWMspkS(clu_ix).mua           = is_mua(cc);     % is multi?
+            PWMspkS(clu_ix).single        = is_single(cc);  % is single?
+            PWMspkS(clu_ix).trodenum      = this_tt;            % tetrode number
+            PWMspkS(clu_ix).phy_cids      = active_clu(cc); % phy id
+            PWMspkS(clu_ix).fs            = fs;                 % sample rate
+            PWMspkS(clu_ix).event_ind     = this_spk_ix;        % spike indices
+            PWMspkS(clu_ix).event_ts      = this_st;            % spike times (in s)
+            PWMspkS(clu_ix).event_ts_fsm  = sess_match.spk2fsm_fn(this_st); % spike times in fsm time in seconds
+            PWMspkS(clu_ix).behav_session = sess_match;         % behavior alignment info from find_wireless_sess_J
+            PWMspkS(clu_ix).clusnotespath = notes_path;         % path to cluster notes
+            PWMspkS(clu_ix).event_wave    = -event_waves;                 % idk
+            PWMspkS(clu_ix).wave_x        = wave_x;                       % n time point relative to spike included
+            PWMspkS(clu_ix).wave_t_s      = wave_x/fs;                    % wave_x in seconds
+            PWMspkS(clu_ix).waves_mn      = -nanmean(this_wave,4);      % mean waveform in uv
+            PWMspkS(clu_ix).waves_std     = -nanstd(this_wave,[],4);    % std of waveform
+            PWMspkS(clu_ix).waves_ind     = spk_ix_keep(cc,:);                  % indices of waves used to compute mean 
+          
         end
 
-        spkS(tt_ix).ratname      = ratname;    % rat name                
-        spkS(tt_ix).mua          = is_mua;     % is multi?
-        spkS(tt_ix).single       = is_single;  % is single?
-        spkS(tt_ix).recpath      = this_mda;   % path to mda
-        spkS(tt_ix).trodenum     = this_tt;    % tetrode number (1-32)
-        spkS(tt_ix).event_ind    = ev_ind;     % spike time indices 
-        spkS(tt_ix).event_ts     = ev_st;      % spike time in seconds
-        spkS(tt_ix).event_clus   = tt_clu;     % idk
-        spkS(tt_ix).phy_cids     = active_clu; % phy cluster ids
-        spkS(tt_ix).fs           = fs;         % sampling rate
+        % this is saving out for the bdata spike structure (N tetrodes x
+        % items)
+        spkS(tt_ix).ratname      = ratname;                      % rat name                
+        spkS(tt_ix).mua          = is_mua;                       % is multi?
+        spkS(tt_ix).single       = is_single;                    % is single?
+        spkS(tt_ix).recpath      = this_mda;                     % path to mda
+        spkS(tt_ix).trodenum     = this_tt;                      % tetrode number (1-32)
+        spkS(tt_ix).event_ind    = ev_ind;                       % spike time indices 
+        spkS(tt_ix).event_ts     = ev_st;                        % spike time in seconds
+        spkS(tt_ix).event_clus   = tt_clu;                       % idk
+        spkS(tt_ix).phy_cids     = active_clu;                   % phy cluster ids
+        spkS(tt_ix).fs           = fs;                           % sampling rate
         spkS(tt_ix).event_wave   = -event_waves;                 % idk
         spkS(tt_ix).wave_x       = wave_x;                       % n time point relative to spike included
         spkS(tt_ix).wave_t_s     = wave_x/fs;                    % wave_x in seconds
