@@ -25,6 +25,6 @@ all_session_names = {sess_path_info.name};
 for i = 3:length(all_session_names) % starting at 3 to skip ". and .."
     % grab the session name & pass it into the find_wireless_sess fx
     session_name = all_session_names{i}
-    get_ksphy_results_J(session_name)
+    get_ksphy_results_J(session_name, 'sorted_dir', sess_path)
 end
 end

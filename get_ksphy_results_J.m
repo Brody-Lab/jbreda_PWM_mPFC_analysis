@@ -74,7 +74,7 @@ save_path = sess_match.save_path
 
 % find kilosort info based on input or session name
 if isempty(sorted_dir)
-    sorted_dir_JB = 'Y:\jbreda\ephys\post_sort_analysis\get_kphys_results_test';
+    sorted_dir_JB = 'Y:\jbreda\ephys\post_sort_analysis\sorted_pre_bdata';
     sorted_sess_dir = fullfile(sorted_dir_JB, sess);
 else
     sorted_sess_dir = fullfile(sorted_dir, sess);
@@ -131,7 +131,7 @@ for n_bndl = 1:nbundles;
     
     % Phy helper will load spike quality/cluster group info per JRB edits
     % the function currently exludes any templates marked as Noise
-    sp = loadKSdir(bundle_dir); 
+    sp = loadKSdir(bundle_dir);
     
     % if there is an spike quality file, use it to assign MUA/Single
     % NOTE: specific to how JRB sorts!
@@ -193,10 +193,18 @@ spk_filt    = firpm(n,f0,a0,w,{20});
 
 %initialize
 nactivetts  = length(unique([S.tt1]));
+
+% if there are no cells for that day, stop here
+if nactivetts == 0
+    sprintf('no cells found in this sesssion!')
+    return 
+end
+
+% bdata SpkS storage (N tetrode x items)
 spkS(nactivetts) = struct();
 tt_ix = 0;
 
-% JB non SpkS storage
+% JB modified SpkS storage (N cluster x items)
 n_clu = length([S.tt1]);
 PWMspkS(n_clu) = struct();
 clu_ix = 0;
