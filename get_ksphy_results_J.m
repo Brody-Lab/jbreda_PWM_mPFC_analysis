@@ -47,9 +47,10 @@ function spkS = get_ksphy_results_J(sess, varargin)
 
 
 %% PARSE INPUTS
+%sess = 'W122_09_19_2019_1_fromSD'
 p = inputParser();
 addParameter(p, 'sorted_dir', ''); 
-addParameter(p, 'overwrite', true); 
+addParameter(p, 'overwrite', false); 
 addParameter(p, 'curator_name', 'Jess'); 
 parse(p,varargin{:});
 
@@ -126,11 +127,16 @@ for n_bndl = 1:nbundles;
     
     % load up spike times and cluster ids from phy
     bundle_dir  = bndl_dirfun(n_bndl);
+    if ~exist(bundle_dir)
+        sprintf('bundle %i was not sorted, will continue.', n_bndl)
+        continue
+    end
     cinf_path  = fullfile(bundle_dir,'cluster_info.tsv');
     
     
     % Phy helper will load spike quality/cluster group info per JRB edits
     % the function currently exludes any templates marked as Noise
+
     sp = loadKSdir(bundle_dir);
     
     % if there is an spike quality file, use it to assign MUA/Single
@@ -147,7 +153,8 @@ for n_bndl = 1:nbundles;
     end
     
     if ~exist(cinf_path)
-        sprintf('couldn''t find any cluster_info for bundle %i, will continue.', n_bndl)   
+        sprintf('couldn''t find any cluster_info for bundle %i, will continue.', n_bndl)
+        continue
     end
 
     % access cluster_info.tsv & extract for single/muas
@@ -182,7 +189,8 @@ clear sp
 %% GET SPIKE TIMEs & IDXS and SAVE OUT
 % create a filter for the waveforms
 assert(sum(diff([S.sample_rate]))==0) % check that all the files have same sampling rate
-fs          = S(1).sample_rate;
+sorted_tts = find(~cellfun(@isempty,{S.sample_rate}));
+fs          = S(sorted_tts(1)).sample_rate; % someitmes there aren't cells on all the tetrodes so making sure this doesn't error out
               %firpmord(cut off freq, dsired amplitudes, maximum allowed deviation           
 [n,f0,a0,w] = firpmord([0 1000 6000 6500]/(fs/2), [0 1 0.1], [0.01 0.06 0.01]);
               %firmp(filter order, normalized freq pts, desired amplitude, weights, ?) 
