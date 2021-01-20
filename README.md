@@ -4,8 +4,9 @@ repository for analysis of PWM ephys data (as of 2020_1_6 this is for wireless m
 
 # TODO
 * get preprocessed 0ing info
-* adjust get_ksphy_results to deal w/ sq
-* assess if filtering in get_ksphy_results is appropriate for these sessions
+* intitla comment get_ksphy_results
+* get_kspy_results README update w/ all utils
+* bdata...ya
 
 ## Assumptions
 
@@ -29,8 +30,9 @@ repository for analysis of PWM ephys data (as of 2020_1_6 this is for wireless m
 ***WORKING HERE***
 - got it to run on a session on 1/15/2020
 - using a lot of `phyHelpers` from [here](https://github.com/cortex-lab/spikes/tree/master/preprocessing/phyHelpers) and wrote my own `readClusterSpikeQualityCSV.m`
-- filter?
--
+- update all this!
+
+4. `find_all_ksphy_results.m`takes a directory with session names (ie the directory that has all my sorted sessions) and runs them through `get_ksphy_results.m`
 
 
 ## utils
