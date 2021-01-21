@@ -1,4 +1,4 @@
-function spkS = get_ksphy_results_J(sess, varargin)
+function [spkS, PWMspkS] = get_ksphy_results_J(sess, varargin)
 % function get_ksphy_waveforms(sess_name)
 %
 % Written by Tyler Boyd-Meridith and adjusted by Jess Breda on 2021-01-15
@@ -16,12 +16,8 @@ function spkS = get_ksphy_results_J(sess, varargin)
         % 3. average each clusters spikes together
         % 4. Append the spike times, cluster labels (relabeled to be
         % continuous + separate struct of phy labels), and average
-        % waveforms and sem of waveforms - i could also try to save all
-        % waveforms but i think these files will get too big - can make it
-        % an optional argument
+        % waveforms and sem of waveforms 
 
-% get the syncing parameters
-% sync timestamps of timing variable %maybe add figure path to find_wireles
 % -------JRB--------
 % INPUT PARAMETERS:
 % - sess = name of sorted session you'd like to align & get info for
@@ -35,15 +31,21 @@ function spkS = get_ksphy_results_J(sess, varargin)
 % needed
 %
 % RETURNS:
-% 
-% 
-% EXAMPLE CALL:
-% 
+% PWMspkS - this is struct that JRB will use for analysis that has things
+% in N cluster x items shape.
 %
-% TODO:
-% - line 182 onward
-%
-% assumes you are running on a PC!
+% spkS - this is a struct that is used for bdata upload/other brody lab
+% code in N tetrode x items shape
+% 
+% 
+% EXAMPLE CALL: get_ksphy_results_J('W122_09_19_2019_1_fromSD', 'sorted_dir', 
+% 'dir/to/sorted/files')
+% 
+% Assumptions:
+% 1. you are running on a PC
+% 2. you can run find_wireless_sess_J already on your files w/o issue
+% 3. you've separted your tetrode into four bundles w/ dirs named
+% 'session_bundleX_forkilosort'(
 
 
 %% PARSE INPUTS
@@ -97,8 +99,8 @@ mda_filefun = @(n_chan) fullfile(mda_dir, sprintf('%s.nt%i.mda',sess,n_chan));
 % go from phy channels to tetrode channles (bc running separate bundles)
 ch2tt       = @(ch, n_bndl) ceil(ch / 4) + (n_bndl-1)*nchperb/4;
 
-% bdata save out info
-wave_x      = -6:25; % n time pts rel. to each spike that get included in the bdata cells and spktimes database
+% spike waveform save out info
+wave_x      = -6:25; % n time pts rel. to each spike that get included 
 nwaves      = 10000; % how many waveforms to store/use to compute the average waveform
 
 % where to save info & overwrite check
@@ -110,7 +112,7 @@ if exist(save_name,'file') && exist(save_name2, 'file') && ~overwrite
     return
 end
 
-% where to save cluster_notes file & adding base info to it
+% where to save cluster_notes text file & adding base info to it
 notes_path  = fullfile(sorted_sess_dir,'cluster_notes.txt');
 notes_fid   = fopen(notes_path,'w+');
 ratname     = sess_match.ratname;
@@ -133,14 +135,12 @@ for n_bndl = 1:nbundles;
     end
     cinf_path  = fullfile(bundle_dir,'cluster_info.tsv');
     
-    
-    % Phy helper will load spike quality/cluster group info per JRB edits
+    % Phyhelpers will load spike quality/cluster group info per JRB edits
     % the function currently exludes any templates marked as Noise
-
     sp = loadKSdir(bundle_dir);
     
     % if there is an spike quality file, use it to assign MUA/Single
-    % NOTE: specific to how JRB sorts!
+    % NOTE: this is specific to how JRB sorts!
     if isfield(sp, 'csq') 
         sp.mua      = sp.csq == 1; 
         sp.single   = sp.csq == 2;
@@ -159,7 +159,7 @@ for n_bndl = 1:nbundles;
 
     % access cluster_info.tsv & extract for single/muas
     fid = fopen(cinf_path);
-    C   = textscan(fid, '%s%s%s%s%s%s%s%s%s%s%s%s'); % JRB has extra string here bc dded a 'sq' column
+    C   = textscan(fid, '%s%s%s%s%s%s%s%s%s%s%s%s'); % JRB has extra string here bc added a 'sq' column
     
     assert(~isempty(strfind(C{1}{1}, 'id'))); % these ids match the phy gui, make sure they are there
     cinfo_id = cellfun(@str2num,C{1}(2:end)); % get ids
@@ -187,16 +187,21 @@ end
 clear sp
 
 %% GET SPIKE TIMEs & IDXS and SAVE OUT
-% create a filter for the waveforms
+
+%--- create a filter for the waveforms
 assert(sum(diff([S.sample_rate]))==0) % check that all the files have same sampling rate
 sorted_tts = find(~cellfun(@isempty,{S.sample_rate}));
-fs          = S(sorted_tts(1)).sample_rate; % someitmes there aren't cells on all the tetrodes so making sure this doesn't error out
+
+% someitmes bundles don't get sorted so making sure this grabs ~something~
+fs          = S(sorted_tts(1)).sample_rate; 
+
               %firpmord(cut off freq, dsired amplitudes, maximum allowed deviation           
 [n,f0,a0,w] = firpmord([0 1000 6000 6500]/(fs/2), [0 1 0.1], [0.01 0.06 0.01]);
+
               %firmp(filter order, normalized freq pts, desired amplitude, weights, ?) 
 spk_filt    = firpm(n,f0,a0,w,{20});
 
-% Compute each cluster's mean waveform by loading relevant tetrode,
+%--- Compute each cluster's mean waveform by loading relevant tetrode,
 % filtering the signal and pulling relevant indices
 
 %initialize
@@ -249,7 +254,7 @@ for n_bndl = 1:length(S)
         dat_filt    = filtfilt(spk_filt,1,uv_per_bit*dat')';
         toc
         
-        % intialize variables of interest for this tetrode
+        % intialize variables of interest for this tetrode (bdata spkS)
         tt_nspk  = sum(S(n_bndl).nspk(this_tt_ind));
         ev_st    = nan(tt_nspk,1);   
         ev_ind   = nan(tt_nspk,1);
@@ -288,29 +293,29 @@ for n_bndl = 1:length(S)
                 event_waves(cc,:,:,ss) = tmpWf;
             end
             
-            this_wave = event_waves(cc,:,:,:);                        % grab the wave for the cluster
+            this_wave = event_waves(cc,:,:,:);                     % grab the wave for the cluster
             
             % this is JB ephys analysis struct (N clusters X items)
             PWMspkS(clu_ix).ratname       = ratname;            % rat name  
             PWMspkS(clu_ix).date          = sess_match.date_str % ephys session date
             PWMspkS(clu_ix).sessid        = sess_match.sessid   % behav session id
             PWMspkS(clu_ix).recpath       = this_mda;           % rec path
-            PWMspkS(clu_ix).mua           = is_mua(cc);     % is multi?
-            PWMspkS(clu_ix).single        = is_single(cc);  % is single?
+            PWMspkS(clu_ix).mua           = is_mua(cc);         % is multi?
+            PWMspkS(clu_ix).single        = is_single(cc);      % is single?
             PWMspkS(clu_ix).trodenum      = this_tt;            % tetrode number
-            PWMspkS(clu_ix).phy_cids      = active_clu(cc); % phy id
+            PWMspkS(clu_ix).phy_cids      = active_clu(cc);     % phy id
             PWMspkS(clu_ix).fs            = fs;                 % sample rate
             PWMspkS(clu_ix).event_ind     = this_spk_ix;        % spike indices
             PWMspkS(clu_ix).event_ts      = this_st;            % spike times (in s)
             PWMspkS(clu_ix).event_ts_fsm  = sess_match.spk2fsm_fn(this_st); % spike times in fsm time in seconds
             PWMspkS(clu_ix).behav_session = sess_match;         % behavior alignment info from find_wireless_sess_J
             PWMspkS(clu_ix).clusnotespath = notes_path;         % path to cluster notes
-            PWMspkS(clu_ix).event_wave    = -event_waves;                 % idk
-            PWMspkS(clu_ix).wave_x        = wave_x;                       % n time point relative to spike included
-            PWMspkS(clu_ix).wave_t_s      = wave_x/fs;                    % wave_x in seconds
+            PWMspkS(clu_ix).event_wave    = -event_waves;               
+            PWMspkS(clu_ix).wave_x        = wave_x;                     % n time point relative to spike included
+            PWMspkS(clu_ix).wave_t_s      = wave_x/fs;                  % wave_x in seconds
             PWMspkS(clu_ix).waves_mn      = -nanmean(this_wave,4);      % mean waveform in uv
             PWMspkS(clu_ix).waves_std     = -nanstd(this_wave,[],4);    % std of waveform
-            PWMspkS(clu_ix).waves_ind     = spk_ix_keep(cc,:);                  % indices of waves used to compute mean 
+            PWMspkS(clu_ix).waves_ind     = spk_ix_keep(cc,:);          % indices of waves used to compute mean 
           
         end
 
@@ -323,7 +328,7 @@ for n_bndl = 1:length(S)
         spkS(tt_ix).trodenum     = this_tt;                      % tetrode number (1-32)
         spkS(tt_ix).event_ind    = ev_ind;                       % spike time indices 
         spkS(tt_ix).event_ts     = ev_st;                        % spike time in seconds
-        spkS(tt_ix).event_clus   = tt_clu;                       % idk
+        spkS(tt_ix).event_clus   = tt_clu;                       % idx to track cluster for multiple on tetrode
         spkS(tt_ix).phy_cids     = active_clu;                   % phy cluster ids
         spkS(tt_ix).fs           = fs;                           % sampling rate
         spkS(tt_ix).event_wave   = -event_waves;                 % idk

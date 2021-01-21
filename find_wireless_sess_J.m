@@ -277,7 +277,6 @@ else
     end
     res.sessiondate = sessiondate; % date in YYYY-MM-DD
     
-    
     %PLOT
     figure(1);
     % trodes
@@ -293,28 +292,9 @@ else
     % save pout
     linkaxes([ax1,ax2],'x');
     saveas(gcf,fullfile(mda_dir, 'ttl_alignment'),'jpeg')
-    
 end
 
-%%PLOT
-% clf;
-% ax1=subplot(2,1,1);
-% y = zeros(size(ttl_trodesall));
-% scatter(ttl_trodesall, y,'g', '*')
-% title('FSM ttl timestamps')
-% title('trodes ttl')
-% ax2=subplot(2,1,2);
-% y2 = zeros(size(ttls_fsmall));
-% scatter(ttls_fsmall, y2, 'k', '*')
-% title('bdata ttl')
-% 
-% figure(1)
-% clf;
-% scatter(ttl_trodesall, ttls_fsmall)
-% xlabel('trodes')
-% ylabel('bdata')
-% title(sess)
-% ADD SAVE OUT
+% SAVE OUT
 res.date_str    = date_str;                  % date in YYMMDD
 res.save_path   = save_path;
 save(save_path, 'res', 'sess')
