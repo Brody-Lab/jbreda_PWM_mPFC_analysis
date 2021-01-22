@@ -35,11 +35,13 @@ for n_pair = 1:n_sound_pairs
     prob = sprintf('probClass%i', n_pair);
     perf = sprintf('perfClass%i', n_pair);
     ntrials = sprintf('nTrialsClass%i', n_pair);
-    
+   
     behS.psycho(n_pair).prob    = beh_dat.saved.(strcat(base, prob));
     behS.psycho(n_pair).perf    = beh_dat.saved.(strcat(base, perf));
     behS.psycho(n_pair).ntrials = beh_dat.saved.(strcat(base, ntrials));
 end
+
+behS.soundpairs                 = beh_dat.saved.PWMSection_thesepairs  % can be used to inform pair history
 
 % N trial length items
 completed_trials   = behS.n_completed_trials;
@@ -47,6 +49,9 @@ behS.hit_history   = beh_dat.saved.PWM_hit_history;             % NaN if violate
 behS.pair_history  = beh_dat.saved.PWM_pair_history';           % transpose
 behS.prev_side     = beh_dat.saved.SideSection_previous_sides'; % transpose
 behS.delay         = beh_dat.saved_history.SideSection_Del_time(1:completed_trials);
+behS.correct_side  = beh_dat.saved_history.SideSection_ThisTrial(1:completed_trials);
+behS.aud1_sigma    = beh_dat.saved_history.PWMSection_AUD1_sigma(1:completed_trials);
+behS.aud2_sigma    = beh_dat.saved_history.PWMSection_AUD2_sigma(1:completed_trials);
  
 % make a struct w/ rows = trials and columns = pokes, waves, states for
 % trial
