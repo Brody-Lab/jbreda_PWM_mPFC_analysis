@@ -1,18 +1,27 @@
-%% Prep protocol info
-% The purpose of this script is to use all the information extracted in
+function behS = prep_protcol_info(sess)
+% The purpose of this function is to use all the information extracted in
 % find_wireless_sess_J to get into bdata & extract protcol information for
 % a single rat/session to be used later on for ephys analysis in python.
+%
+% INPUT PARAMETERS:
+% sess = name of session you'd like to get behavior info for 
+%
+% RETURNS:
+% behS = struct with behavior information/times/etc for that PWM session
+%
+% EXAMPLE CALL:
+% 
 % ------------------------------
-%% Initialize Inputs
-
-sess_name = 'data_sdc_20190902_145404_fromSD';
-sorted_dir =  'Y:\jbreda\ephys\post_sort_analysis\sorted_pre_bdata';
-sess_dir = fullfile(sorted_dir, sess_name);
+%% Initialize directories & save out
+% note this is specific to how JRB stores/sorts/etc.
+sorted_dir =  'Y:\jbreda\ephys\post_sort_analysis\sorted_pre_bdata'; % where you keep your sorted sessions
+sess_dir = fullfile(sorted_dir, sess);
 save_name  = fullfile(sess_dir,'protocol_info.mat')
 
 %% Load up
-% load spkS & alignmnet info
-[ ~ , PWMspkS] = get_ksphy_results_J(sess_name, 'overwrite', false);
+% load spkS & alignmnet info (if you want to do this pre sorting, you just
+% need to run find_wirelss_sess_J to get the correct behavior session)
+[ ~ , PWMspkS] = get_ksphy_results_J(sess, 'overwrite', false);
  
 % load behavior data & dohble check we are in the right place
 beh_dat = load(PWMspkS(1).behav_session.goodpath);
@@ -59,7 +68,8 @@ behS.aud2_sigma    = beh_dat.saved_history.PWMSection_AUD2_sigma(1:completed_tri
      behS.parsed_events(ntrial) = beh_dat.saved_history.ProtocolsSection_parsed_events{ntrial,1}
  end
  
-sprintf('behavior info for %s has been extracted', sess_name)
+sprintf('behavior info for %s has been extracted', sess)
 save(save_name,'behS');
 
+end 
 
