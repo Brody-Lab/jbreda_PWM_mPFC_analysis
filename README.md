@@ -38,6 +38,21 @@ repository for analysis of PWM ephys data (as of 2020_1_6 this is for wireless m
 
   This function takes a behavior session, runs `get_ksphy_results_J` to get behavior alignment info (could also run `find_wiresless_sess_J` instead if you want), and loads the correct behavior session from bdata. Then, it pulls out a variety of relevant trial information for PWM (eg n_done_trials, sound_delay_time), and saves them into a struct `behS` as `protocol_info.mat`. Along with the functions above, this was done for the sake of export into python & load into dictionaries.
 
+
+## python
+```conda create -n PWM_ephys python=3.7 pip numpy matplotlib scipy scikit-learn h5py pyqt cython pillow
+
+conda activate PWM_ephys
+pip install neo
+pip install spykes
+pip install spikeinterface (usually uses python=3.6)
+pip install neo
+pip install black
+pip install seaborn
+```
+
+* working on exploratory analysis for 20190902 in notebook, will update when done
+
 ## utils
 (in no specific order)
 1. `bundle_rename.m` is a script I used to rename all my sorted sessions from `session_name_preprocessinfo_firstbundle_forkilosort` to `session_name_bundle1_forkilosrt` to better align with Tyler's code
@@ -47,6 +62,8 @@ repository for analysis of PWM ephys data (as of 2020_1_6 this is for wireless m
 3.  `ttl_match.mat` is an output from `find_wireless_sess_J` that I used in the `mat_to_python` notebook above and sometimes use it to check and remind myself what the output is :D
 
 4. `readmda.m` is from mountainlab [git](https://github.com/flatironinstitute/mountainlab/tree/master/matlab/mdaio) & used to load .mda files into matlab
+
+5. `kilosort_preprocess_mask_forcluster`
 
 ## phy helpers
 
