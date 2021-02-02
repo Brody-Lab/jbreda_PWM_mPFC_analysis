@@ -5,7 +5,8 @@ import scipy.io as spio
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-
+import os
+from spykes.plot.neurovis import NeuroVis
 
 ## --- I/O ---
 def load_nested_mat(filename):
@@ -179,3 +180,32 @@ def make_beh_df(beh_dict):
     beh_df['aud2_off']  = aud2_off
 
     return beh_df
+
+## --- Spykes integration ---
+def initiate_neurons(spks_dict, sess_date):
+    """
+    This function takes spks_dict along with session data and unpacks spike times
+    in finite state machine/behavior time & turns into NeuroVis object.
+
+    inputs
+    ------
+    spks_dict : dict, with spikes .mat structures extracted
+    sess_data : str, used for naming the objects
+
+    returns
+    -------
+    neuron_list : list, with each item being a NeuroVis object pertaining to a
+                  neuron in the session
+    """
+
+    spk_in_fsm_time = spk_dict["event_ts_fsm"] # fsm = behavior time
+    neuron_list = []
+
+    for neuron in range(len(spk_in_fsm_time)):
+        spk_times = spk_in_fsm_time[neuron]
+
+        # instantiate neuron
+        neuron = NeuroVis(spk_times, name = '{} {}'.format(neuron + 1, sess_date))
+        neuron_list.append(neuron)
+
+    return neuron_list
