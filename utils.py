@@ -198,7 +198,7 @@ def initiate_neurons(spks_dict, sess_date):
                   neuron in the session
     """
 
-    spk_in_fsm_time = spk_dict["event_ts_fsm"] # fsm = behavior time
+    spk_in_fsm_time = spks_dict["event_ts_fsm"] # fsm = behavior time
     neuron_list = []
 
     for neuron in range(len(spk_in_fsm_time)):
