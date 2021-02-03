@@ -68,28 +68,81 @@ def load_nested_mat(filename):
     return _check_vars(data)
 
 
-def load_session_info(beh_path, spks_path):
+def load_and_wrangle(beh_path, spks_path, overwrite=False):
     """
-    This function should be used to load behavior and spike data for a wireless tetrode
-    ephys session. It assumes that data is coming from matlab and structured as JRB has done.
+    This function loads behavior and spike data from a single session given path
+    information. If behavior data has already been loaded & wrangled, will load
+    the dataframe instead of creating a new one.
 
     inputs
     ------
     beh_path  : string, path to .mat file with behavior info
-    spks_path : string, path to .mat file with spiking info extracted from kilosort/raw data
+    spks_path : string, path to .mat file with spks info
+    overwrite (optional, False) : wether or not to overwrite previous dataframe
+    or load up if already made
 
     returns
-    -------
+    ------
+    beh_df    :  df (ntrials x items), tidy data frame with behavior information
+                & some relabeling
+    spks_dict : dict, with spk info from .mat file
+    """
+
+    # --Spikes--- (eventually can load/in out with pickle if needed)
+    spks_dict = load_spks(spks_path)
+
+    # --Behavior--
+    # check if the df has already been created, then either load or wrangle
+    session_dir = os.path.dirname(beh_path)
+
+    if os.path.exists(os.path.join(session_dir, 'beh_df.csv')) & overwrite==False:
+
+        beh_df = pd.read_csv(os.path.join(session_dir, 'beh_df.csv'))
+
+    else:
+        beh_dict = load_behavior(beh_path)
+        beh_df = make_beh_df(beh_dict)
+
+    return beh_df, spks_dict
+
+### === fx called by load_and_wrangle
+def load_behavior(beh_path):
+    """
+    This function loads the behavior data from the protocol_info.mat file in the
+    directory that is passed into it
+
+    inputs
+    ------
+    beh_path  : string, path to .mat file with behavior info
+
+    returns
+    ------
     beh_dict  : dict, with behavior .mat structure extracted
-    spks_dict : dict, with spikes .mat structures extracted
     """
     beh_dict = load_nested_mat(beh_path) # this function is custom to deal with nested structures
     beh_dict = beh_dict["behS"]
 
+    return beh_dict
+
+
+def load_spks(spks_path):
+    """
+    This function loads the behavior data from the ksphy_cluster_info_foranalys.mat
+    file in the directory that is passed into it
+
+    inputs
+    ------
+    spks_path : string, path to .mat file with spiking info extracted from kilosort/raw data
+
+    returns
+    ------
+    spks_dict : dict, with spk info from .mat file
+    """
     spks_dict = spio.loadmat(spks_path, squeeze_me = True)
     spks_dict = spks_dict['PWMspkS']
 
-    return beh_dict, spks_dict
+    return spks_dict
+
 
 def make_beh_df(beh_dict):
 
@@ -138,12 +191,14 @@ def make_beh_df(beh_dict):
     aud1_off = np.zeros((len(parsed_events_dict)))
     aud2_on = np.zeros((len(parsed_events_dict)))
     aud2_off = np.zeros((len(parsed_events_dict)))
+    end_state = np.zeros((len(parsed_events_dict)))
 
     # iterate over items from state matrix
     for trial in range(len(parsed_events_dict)):
 
-        # every trial has a center poke
+        # every trial has a center poke & end_state
         c_poke[trial] = parsed_events_dict[trial]['states']['cp'][0]
+        end_state[trial] = parsed_events_dict[trial]['states']['check_next_trial_ready'][1]
 
         # not all trials will have sound/hit time/etc, pull out info for non-violated
         if beh_df['hit_hist'][trial] == 'viol':
@@ -173,6 +228,7 @@ def make_beh_df(beh_dict):
 
     # add to df
     beh_df['c_poke']    = c_poke
+    beh_df['end_state'] = end_state
     beh_df['hit_state'] = hit_state
     beh_df['aud1_on']   = aud1_on
     beh_df['aud1_off']  = aud1_off
@@ -180,6 +236,8 @@ def make_beh_df(beh_dict):
     beh_df['aud2_off']  = aud2_off
 
     return beh_df
+### === enf of fx called by load_and_wrangle
+
 
 ## --- Spykes integration ---
 def initiate_neurons(spks_dict, sess_date):
@@ -209,3 +267,6 @@ def initiate_neurons(spks_dict, sess_date):
         neuron_list.append(neuron)
 
     return neuron_list
+
+# edit spykes
+# C:\Users\brodylab\anaconda3\Lib\site-packages\spykes
