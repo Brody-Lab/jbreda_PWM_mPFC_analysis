@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import os
-from spykes.plot.neurovis import NeuroVis
+from spykes.spykes.plot.neurovis import NeuroVis
 
 ## --- I/O ---
 def load_nested_mat(filename):
