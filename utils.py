@@ -234,6 +234,7 @@ def make_beh_df(beh_dict):
     beh_df['aud1_off']  = aud1_off
     beh_df['aud2_on']   = aud2_on
     beh_df['aud2_off']  = aud2_off
+    beh_df['end_state'] = end_state
 
     return beh_df
 ### === enf of fx called by load_and_wrangle
