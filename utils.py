@@ -68,7 +68,7 @@ def load_nested_mat(filename):
     return _check_vars(data)
 
 
-def load_and_wrangle(beh_path, spks_path, overwrite=False):
+def load_and_wrangle(beh_path, spks_path, overwrite):
     """
     This function loads behavior and spike data from a single session given path
     information. If behavior data has already been loaded & wrangled, will load
@@ -95,7 +95,8 @@ def load_and_wrangle(beh_path, spks_path, overwrite=False):
     # check if the df has already been created, then either load or wrangle
     session_dir = os.path.dirname(beh_path)
 
-    if os.path.exists(os.path.join(session_dir, 'beh_df.csv')) & overwrite==False:
+    #this is broken & I need to fix
+    if os.path.exists(os.path.join(session_dir, 'beh_df.csv')) and overwrite==False:
 
         beh_df = pd.read_csv(os.path.join(session_dir, 'beh_df.csv'))
 
