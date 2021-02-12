@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 from .. import utils
 from ..config import DEFAULT_POPULATION_COLORS
@@ -112,18 +113,20 @@ class NeuroVis(object):
 
         # Show the raster
         if plot is True:
-            self.plot_raster(rasters, cond_id=None, sortby=sortby,
-                             sortorder=sortorder)
+            ax = plt.gca()
+            self.plot_raster(rasters, event_name=event, cond_id=None,
+            sortby=sortby, sortorder=sortorder, axis=ax)
 
         # Return all the rasters
         return rasters
 
-    def plot_raster(self, rasters, cond_id=None, cond_name=None, sortby=None,
+    def plot_raster(self, rasters, axis='gca', event_name='event_onset', cond_id=None, cond_name=None, sortby=None,
                     sortorder='descend', cmap='Greys', has_title=True):
         '''Plot a single raster.
 
         Args:
             rasters (dict): Output of get_raster method
+            title (str): What to title raster plot
             cond_id (str): Which raster to plot indicated by the key in
                 :data:`rasters['data']`. If None then all are plotted.
             cond_name (str): Name to appear in the title.
@@ -143,12 +146,18 @@ class NeuroVis(object):
         xtics_loc = [-0.5, (-window[0]) / binsize - 0.5,
                      (window[1] - window[0]) / binsize - 0.5]
 
+        if axis == 'gca':
+            ax = plt.gca()
+        else:
+            ax = axis
+
         if cond_id is None:
             for cond in list(rasters['data']):
-                self.plot_raster(rasters, cond_id=cond, cond_name=cond_name,
+                self.plot_raster(rasters, axis=axis, event_name=event_name,cond_id=cond, cond_name=cond_name,
                                  sortby=sortby, sortorder=sortorder, cmap=cmap,
                                  has_title=has_title)
-                plt.show()
+                # plt.show()
+
         else:
             raster = rasters['data'][cond_id]
 
@@ -160,34 +169,37 @@ class NeuroVis(object):
                 )
                 raster_sorted = raster[sort_idx]
 
-                plt.imshow(raster_sorted, aspect='auto',
+                ax.imshow(raster_sorted, aspect='auto',
                            interpolation='none', cmap=plt.get_cmap(cmap))
 
-                plt.axvline(
-                    (-window[0]) / binsize - 0.5, color='r', linestyle='--')
-                plt.ylabel('trials')
-                plt.xlabel('time [ms]')
-                plt.xticks(xtics_loc, xtics)
+                ax.axvline(
+                    (-window[0]) / binsize - 0.5, color='r', linestyle='--',
+                    label=event_name)
+                ax.set(ylabel='trials', xlabel='time [ms]')
+
 
                 if has_title:
                     if cond_id:
                         if cond_name:
-                            plt.title('neuron %s. %s' %
+                            ax.set_title('neuron %s. %s' %
                                       (self.name, cond_name))
                         else:
-                            plt.title('neuron %s. %s: %s' %
+                            ax.set_title('neuron %s. %s: %s' %
                                       (self.name, rasters['conditions'],
                                        cond_id))
                     else:
-                        plt.title('neuron %s' % self.name)
+                        ax.set_title('neuron %s' % self.name)
 
-                ax = plt.gca()
-                ax.spines['top'].set_visible(False)
-                ax.spines['right'].set_visible(False)
-                ax.spines['bottom'].set_visible(False)
-                ax.spines['left'].set_visible(False)
-                plt.tick_params(axis='x', which='both', top='off')
-                plt.tick_params(axis='y', which='both', right='off')
+
+                # optional axis argument added by JRB
+
+                sns.despine()
+                ax.tick_params(axis='x', which='both', top='off')
+                ax.tick_params(axis='y', which='both', right='off')
+                ax.set_xticks(xtics_loc)
+                ax.set_xticklabels(xtics)
+                ax.legend()
+                plt.tight_layout()
 
             else:
                 print('No trials for this condition!')
@@ -258,13 +270,14 @@ class NeuroVis(object):
             if not event_name:
                 event_name = event
                 conditions_names = list(psth['data'])
-            self.plot_psth(psth, ylim=ylim, event_name=event_name,
+            ax = plt.gca()
+            self.plot_psth(psth, axis=ax, ylim=ylim, event_name=event_name,
                            conditions_names=conditions_names,
                            colors=colors)
 
         return psth
 
-    def plot_psth(self, psth, event_name='event_onset', conditions_names=None,
+    def plot_psth(self, psth, axis='gca',event_name='event_onset', conditions_names=None,
                   cond_id=None, ylim=None, colors=DEFAULT_POPULATION_COLORS):
         '''Plots PSTH.
 
@@ -304,16 +317,21 @@ class NeuroVis(object):
 
         time_bins = np.arange(window[0], window[1], binsize) + binsize / 2.0
 
-        if ylim:
-            plt.plot([0, 0], ylim, color='k', ls='--')
+        if axis == 'gca':
+            ax = plt.gca()
         else:
-            plt.plot([0, 0], [y_min, y_max], color='k', ls='--')
+            ax = axis
+
+        if ylim:
+            ax.plot([0, 0], ylim, color='k', ls='--')
+        else:
+            ax.plot([0, 0], [y_min, y_max], color='k', ls='--')
 
         for i, cond_id in enumerate(keys):
             if np.all(np.isnan(psth['data'][cond_id]['mean'])):
-                plt.plot(0, 0, alpha=1.0, color=colors[i % len(colors)])
+                ax.plot(0, 0, alpha=1.0, color=colors[i % len(colors)])
             else:
-                plt.plot(time_bins, psth['data'][cond_id]['mean'],
+                ax.plot(time_bins, psth['data'][cond_id]['mean'],
                          color=colors[i % len(colors)], lw=1.5)
 
         for i, cond_id in enumerate(keys):
@@ -326,7 +344,7 @@ class NeuroVis(object):
                 legend.append('all')
 
             if not np.all(np.isnan(psth['data'][cond_id]['mean'])):
-                plt.fill_between(time_bins, psth['data'][cond_id]['mean'] -
+                ax.fill_between(time_bins, psth['data'][cond_id]['mean'] -
                                  psth['data'][cond_id]['sem'],
                                  psth['data'][cond_id]['mean'] +
                                  psth['data'][cond_id]['sem'],
@@ -334,26 +352,28 @@ class NeuroVis(object):
                                  alpha=0.2)
 
         if conditions:
-            plt.title('neuron %s: %s' % (self.name, conditions))
+            ax.set_title('neuron %s: %s' % (self.name, conditions))
         else:
-            plt.title('neuron %s' % self.name)
+            ax.set_title('neuron %s' % self.name)
 
-        plt.xlabel('time [ms]')
-        plt.ylabel('spikes per second [spks/s]')
+        ax.set(xlabel='time [ms]',ylabel='spikes per second [spks/s]')
 
         if ylim:
-            plt.ylim(ylim)
+            ax.set_ylim(ylim)
         else:
-            plt.ylim([y_min, y_max])
+            ax.set_ylim([y_min, y_max])
 
-        ax = plt.gca()
+
+
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
 
-        plt.tick_params(axis='y', right='off')
-        plt.tick_params(axis='x', top='off')
+        ax.tick_params(axis='y', right='off')
+        ax.tick_params(axis='x', top='off')
 
-        plt.legend(legend, frameon=False)
+        ax.legend(legend, frameon=False)
+        plt.tight_layout()
+
 
     def get_spikecounts(self, event=None, df=None,
                         window=np.array([50.0, 100.0])):

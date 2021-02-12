@@ -12,11 +12,11 @@ DEFAULT_DATA_DIR = '.spykes'
 
 # Defines the default colors for the population plot.
 DEFAULT_POPULATION_COLORS = [
-    '#F5A21E',
-    '#134B64',
-    '#EF3E34',
-    '#02A68E',
-    '#FF07CD',
+    '#6F9CE8',
+    '#E8BB6F',
+    '#197E8F',
+    '#E8806F',
+    '#88B140',
 ]
 
 
