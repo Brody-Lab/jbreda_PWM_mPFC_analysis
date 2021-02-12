@@ -1,5 +1,5 @@
 
-function get_mask_info(dir_with_bin_file, save_folder)
+function get_mask_info(bin_folder, save_folder)
 
 % ---------------------
 % adapted from jbreda_kilosort repo kilosort_preprocess_forcluster 
@@ -7,8 +7,8 @@ function get_mask_info(dir_with_bin_file, save_folder)
 % analysis (bc i forogot to save it...)
 %
 % INPUT PARAMETERS:
-% - folder with .bin files that haven't been processed
-% - 
+% - bin_folder folder with .bin files that haven't been processed
+% - save_folder: where you want masks sent for saving
 % - 
 % ---------------------
 %% inputs
@@ -46,6 +46,8 @@ else
 end
 
 %% loop over binary files
+
+addpath(save_folder)
 for i = 1:length(listofbinaryfiles)
 
     % first, open the binary file to read
@@ -54,8 +56,6 @@ for i = 1:length(listofbinaryfiles)
     fid=fopen(fname,'r');
     
     full_mask = [];
-    
-    addpath(save_folder)
     cd(save_folder)
     
     
@@ -99,15 +99,33 @@ for i = 1:length(listofbinaryfiles)
 %         dat16 = int16(1000*dataMASK');
 %         fwrite(fidw, dat16, 'int16');
 
-   end
-
-    writeNPY(full_mask,[save_name '_mask_info'])
+    end
     
-fclose(fid);
+          
+    if contains(sess_name, "first")
+        new_name = strcat(sess_name(1:end-12), "_bundle1_mask_info");
+          
+        
+    elseif contains(sess_name, "second")
+        new_name = strcat(sess_name(1:end-13), "_bundle2_mask_info");
+            
+            
+    elseif contains(sess_name, "third")
+        new_name = strcat(sess_name(1:end-12), "_bundle3_mask_info");
+            
+            
+    elseif contains(sess_name, "fourth")
+        new_name = strcat(sess_name(1:end-13), "_bundle4_mask_info");       
+            
+    end
 
-sprintf('finished file %d of %d files to process',i,length(listofbinaryfiles))
+    writeNPY(full_mask, new_name)
+    
+    fclose(fid);
+    
+    cd(bin_folder)
+
+    sprintf('finished file %d of %d files to process',i,length(listofbinaryfiles))
 %cd .. %return to directory with other binary files
-
-end
 
 end
