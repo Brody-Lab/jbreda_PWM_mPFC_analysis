@@ -122,10 +122,13 @@ def mask2fsm(mask_info, fs, spk2fsm):
 
 # In[185]:
 
-sessions = ['data_sdb_20190724_193007', 'data_sdc_20190902_145404_fromSD', 'W122_08_31_2019_1_fromSD','W122_09_04_2019_1_fromSD', 'W122_09_24_2019_1_fromSD']
+sess_names = np.array(['data_sdb_20190724_193007_fromSD', 'data_sdc_20190902_145404_fromSD', 'W122_07_27_2019_1_fromSD',
+            'W122_08_06_2019_1_fromSD', 'W122_08_07_2019_1_fromSD', 'W122_08_31_2019_1_fromSD', 'W122_09_04_2019_1_fromSD',
+            'W122_09_09_2019_1_fromSD', 'W122_09_10_2019_1_fromSD', 'W122_09_11_2019_1_fromSD', 'W122_09_12_2019_1_fromSD',
+            'W122_09_19_2019_1_fromSD', 'W122_09_21_2019_1_fromSD', 'W122_09_24_2019_1_fromSD'])
 
 # global
-sess_name = sessions[4]
+sess_name = sess_names[12]
 dir_name  = 'Y:\jbreda\ephys\post_sort_analysis\sorted_pre_bdata'
 beh_mat   = 'protocol_info.mat'
 spks_mat  = 'ksphy_clusters_foranalysis.mat'
