@@ -15,6 +15,7 @@ import pandas as pd
 import seaborn as sns
 import scipy.io as spio
 import os
+import sys; sys.path.insert(0, '..')
 from utils import *
 
 # settings
