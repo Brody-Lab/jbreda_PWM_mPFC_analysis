@@ -138,8 +138,8 @@ def load_spks(spks_path):
     ------
     spks_dict : dict, with spk info from .mat file
     """
-    spks_dict = spio.loadmat(spks_path, squeeze_me = True)
-    spks_dict = spks_dict['PWMspkS']
+    spks_dict = spio.loadmat(spks_path)
+    spks_dict = spks_dict['PWMspkS'][0]
 
     return spks_dict
 
