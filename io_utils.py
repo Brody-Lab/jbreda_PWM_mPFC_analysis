@@ -96,6 +96,7 @@ def load_and_wrangle(beh_path, spks_path, overwrite):
 
     # --Spikes--- (eventually can load/in out with pickle if needed)
     spks_info = load_spks(spks_path)
+    spks_dict = make_spks_dict(spks_info)
 
     # --Behavior--
     # check if the df has already been created, then either load or wrangle
@@ -110,28 +111,9 @@ def load_and_wrangle(beh_path, spks_path, overwrite):
         beh_info = load_behavior(beh_path)
         beh_df = make_beh_df(beh_info)
 
-    return beh_df, spks_info
+    return beh_df, spks_dict
 
 ### ---fx called by load_and_wrangle---
-def load_behavior(beh_path):
-    """
-    This function loads the behavior data from the protocol_info.mat file in the
-    directory that is passed into it
-
-    inputs
-    ------
-    beh_path  : string, path to .mat file with behavior info
-
-    returns
-    ------
-    beh_info  : ndarray, with behavior .mat structure extracted
-    """
-    beh_info = load_nested_mat(beh_path) # this function is custom to deal with nested structures
-    beh_info = beh_info["behS"]
-
-    return beh_info
-
-
 def load_spks(spks_path):
     """
     This function loads the behavior data from the ksphy_cluster_info_foranalys.mat
@@ -151,10 +133,82 @@ def load_spks(spks_path):
     return spks_info
 
 
+def make_spks_dict(spks_info):
+    """
+    Data wrangling function to take ndarry from load_spks() and put into python dict
+    for analysis
+
+    inputs
+    ------
+    spks_info : ndarray, with spk info from .mat file
+
+    returns
+    -------
+    spks_dict : dict with ephys information for session & each cell
+    """
+
+    # initilaize
+    spks_dict= {}
+    ncells = len(spks_info['trodenum'])
+    trode_nums = []
+    m_waves = []
+    s_waves = []
+    spk_qual = []
+    spk_times = []
+
+    # grab date, spike to behavior time & fs
+    spks_dict['date'] = spks_info['date'][0][0]
+    spks_dict['spk2fsm'] = spks_info['behav_session'][0]['spk2fsm_rt'][0][0][0]#[m, b
+    spks_dict['fs'] = spks_info['fs'][0][0][0]
+
+    # for each cell, tetrode number, spike type, mean waveform, std waveform
+    for cell in range(ncells):
+        trode_nums.append(spks_info['trodenum'][cell][0][0])
+        spk_times.append(spks_info['event_ts_fsm'][cell]) # in beh time
+        m_waves.append(spks_info['waves_mn'][cell].reshape(4,32))
+        s_waves.append(spks_info['waves_std'][cell].reshape(4,32))
+
+        if spks_info['mua'][cell][0][0] == 1:
+            spk_qual.append('multi')
+        elif spks_info['single'][cell][0][0] == 1:
+            spk_qual.append('single')
+        else:
+            raise TypeError("cell not marked as multi or single")
+
+    # appened
+    spks_dict['trode_nums'] = trode_nums
+    spks_dict['spk_qual'] = spk_qual
+    spks_dict['spk_times'] = spk_times
+    spks_dict['mean_wav'] = m_waves #[ncell][tetrode]
+    spks_dict['std_wave'] = s_waves
+
+    return spks_dict
+
+
+
+def load_behavior(beh_path):
+    """
+    This function loads the behavior data from the protocol_info.mat file in the
+    directory that is passed into it
+
+    inputs
+    ------
+    beh_path  : string, path to .mat file with behavior info
+
+    returns
+    ------
+    beh_info  : ndarray, with behavior .mat structure extracted
+    """
+    beh_info = load_nested_mat(beh_path) # this function is custom to deal with nested structures
+    beh_info = beh_info["behS"]
+
+    return beh_info
+
+
 def make_beh_df(beh_info):
 
     """
-    Data wrangling function to take dictionary from load_session_info() and putting it into a
+    Data wrangling function to take ndarry from load_behaviorand putting it into a
     tidy dataframe for analysis
 
     inputs
