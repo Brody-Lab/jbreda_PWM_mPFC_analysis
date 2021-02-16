@@ -116,7 +116,7 @@ def get_neuron_psths(neurons, events, windows, df):
 
         # create psth dictionary
 
-            psth = neurons[neuron].get_psth(event=events[event], df=beh_df_d2_hl,
+            psth = neurons[neuron].get_psth(event=events[event], df=df,
                           window=windows[event], binsize=50, plot=False,
                           event_name=events[event])
 

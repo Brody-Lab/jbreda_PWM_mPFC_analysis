@@ -91,11 +91,11 @@ def load_and_wrangle(beh_path, spks_path, overwrite):
     ------
     beh_df    :  df (ntrials x items), tidy data frame with behavior information
                 & some relabeling
-    spks_dict : dict, with spk info from .mat file
+    spks_info : ndarray, with spk info from .mat file
     """
 
     # --Spikes--- (eventually can load/in out with pickle if needed)
-    spks_dict = load_spks(spks_path)
+    spks_info = load_spks(spks_path)
 
     # --Behavior--
     # check if the df has already been created, then either load or wrangle
@@ -107,10 +107,10 @@ def load_and_wrangle(beh_path, spks_path, overwrite):
         beh_df = pd.read_csv(os.path.join(session_dir, 'beh_df.csv'))
 
     else:
-        beh_dict = load_behavior(beh_path)
-        beh_df = make_beh_df(beh_dict)
+        beh_info = load_behavior(beh_path)
+        beh_df = make_beh_df(beh_info)
 
-    return beh_df, spks_dict
+    return beh_df, spks_info
 
 ### ---fx called by load_and_wrangle---
 def load_behavior(beh_path):
@@ -124,12 +124,12 @@ def load_behavior(beh_path):
 
     returns
     ------
-    beh_dict  : dict, with behavior .mat structure extracted
+    beh_info  : ndarray, with behavior .mat structure extracted
     """
-    beh_dict = load_nested_mat(beh_path) # this function is custom to deal with nested structures
-    beh_dict = beh_dict["behS"]
+    beh_info = load_nested_mat(beh_path) # this function is custom to deal with nested structures
+    beh_info = beh_info["behS"]
 
-    return beh_dict
+    return beh_info
 
 
 def load_spks(spks_path):
@@ -143,15 +143,15 @@ def load_spks(spks_path):
 
     returns
     ------
-    spks_dict : dict, with spk info from .mat file
+    spks_info : ndarray, with spk info from .mat file
     """
-    spks_dict = spio.loadmat(spks_path)
-    spks_dict = spks_dict['PWMspkS'][0]
+    spks_info = spio.loadmat(spks_path)
+    spks_info = spks_info['PWMspkS'][0]
 
-    return spks_dict
+    return spks_info
 
 
-def make_beh_df(beh_dict):
+def make_beh_df(beh_info):
 
     """
     Data wrangling function to take dictionary from load_session_info() and putting it into a
@@ -159,7 +159,7 @@ def make_beh_df(beh_dict):
 
     inputs
     ------
-    beh_dict : dict, extracted .mat structure from load_session_info()
+    beh_info : ndarray, extracted .mat structure from load_session_info()
 
     returns
     -------
@@ -170,29 +170,29 @@ def make_beh_df(beh_dict):
     beh_df = pd.DataFrame()
 
     # assign trail n values
-    beh_df['trial_num'] = np.arange(1, beh_dict['n_completed_trials'] + 1)
+    beh_df['trial_num'] = np.arange(1, beh_info['n_completed_trials'] + 1)
 
     # rename previous side to be L/R
-    prev_side_adj = np.roll(beh_dict['prev_side'],1) # n-1 trial info
+    prev_side_adj = np.roll(beh_info['prev_side'],1) # n-1 trial info
     prev_side_adj = np.where(prev_side_adj == 114, 'RIGHT', 'LEFT' )
     prev_side_adj[0] = 'NaN' # trial 0 doesn't have a previous
 
     # turn hit info to strings
-    beh_df['hit_hist'] = beh_dict['hit_history']
+    beh_df['hit_hist'] = beh_info['hit_history']
     beh_df['hit_hist'] = beh_df['hit_hist'].mask(beh_df['hit_hist'] == 1.0, "hit")
     beh_df['hit_hist'] = beh_df['hit_hist'].mask(beh_df['hit_hist'] == 0.0, "miss")
     beh_df['hit_hist'][beh_df['hit_hist'].isnull()] = "viol"
 
     # get n_trial length items into df
-    beh_df['delay'] = beh_dict['delay']
-    beh_df['pair_hist'] = beh_dict['pair_history']
-    beh_df['correct_side'] = beh_dict['correct_side']
+    beh_df['delay'] = beh_info['delay']
+    beh_df['pair_hist'] = beh_info['pair_history']
+    beh_df['correct_side'] = beh_info['correct_side']
     beh_df['prev_side'] = prev_side_adj
-    beh_df['aud1_sigma'] = beh_dict['aud1_sigma']
-    beh_df['aud2_sigma'] = beh_dict['aud2_sigma']
+    beh_df['aud1_sigma'] = beh_info['aud1_sigma']
+    beh_df['aud2_sigma'] = beh_info['aud2_sigma']
 
     # extract parsed events/state machine info for each trial
-    parsed_events_dict = beh_dict["parsed_events"]
+    parsed_events_dict = beh_info["parsed_events"]
 
     # initilize space
     c_poke = np.zeros((len(parsed_events_dict)))
