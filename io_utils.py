@@ -180,7 +180,7 @@ def make_spks_dict(spks_info):
     spks_dict['spk_qual'] = spk_qual
     spks_dict['spk_times'] = spk_times
     spks_dict['mean_wav'] = m_waves #[ncell][tetrode]
-    spks_dict['std_wave'] = s_waves
+    spks_dict['std_wav'] = s_waves
 
     return spks_dict
 
