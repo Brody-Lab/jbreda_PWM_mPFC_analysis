@@ -49,18 +49,20 @@ def initiate_neurons(spks_dict, sess_date):
 "get_raster for all neurons and assigned events"
 
 
-def get_neuron_rasters(neurons, events, windows, df):
+def get_neuron_rasters(neurons, events, windows, bndl_dfs, df_names):
     """
     This function can be used to get rasters for multiple neurons across multiple events
     with specific time windows for each event
 
     inputs:
     -------
-    neurons : NeuroVis object, N neurons long
-    events  : list, event name in strings from your behavior df you want to align to
-    windows : list, time window in ms to grab for each event
-    df      : behavior data frame with event information
-
+    neurons   : NeuroVis object, N neurons long
+    events    : list, event name in strings from your behavior df you want to align to
+    windows   : list, time window in ms to grab for each event
+    bndl_dfs  : dict, containing df for each bndl that has a mask created by
+                make_unmasked_dfs()
+    df_names  : list, Ncells long containing dict keys to access df for each
+                cell  created by make_unmasked_dfs()
     returns:
     -------
     neuron_rasters : list, raster dictionaries stored by [neuron][event] for plotting"""
@@ -70,14 +72,14 @@ def get_neuron_rasters(neurons, events, windows, df):
 
     # iterate over each neuron and event
     for neuron in range(len(neurons)):
-
         rasters = []
 
         for event in range(len(events)):
 
         # create raster dictionary
             raster = neurons[neuron].get_raster(event = events[event], conditions=None,
-                                                df = df, window=windows[event], plot=False)
+                                                df = bndl_dfs[df_names[neuron]],
+                                                window=windows[event], plot=False)
             rasters.append(raster)
 
         neuron_rasters.append(rasters)
@@ -85,7 +87,7 @@ def get_neuron_rasters(neurons, events, windows, df):
     return neuron_rasters
 
 
-def get_neuron_psths(neurons, events, windows, df):
+def get_neuron_psths(neurons, events, windows, bndl_dfs, df_names):
     """
     This function can be used to get psths for multiple neurons across multiple events
     with specific time windows for each event
@@ -94,10 +96,13 @@ def get_neuron_psths(neurons, events, windows, df):
     -------
     neurons    : NeuroVis object, N neurons long
     events     : list, event name in strings from behavior df you want to align to
-    df         : behavior data frame with event information
     conditions : str, condition namefrom behavior df to split by (e.g. hit Y/N)
     windows    : list, time window in ms to grab for each event
     binsize    : int, binsize in ms
+    bndl_dfs  : dict, containing df for each bndl that has a mask created by
+                make_unmasked_dfs()
+    df_names  : list, Ncells long containing dict keys to access df for each
+                cell  created by make_unmasked_dfs()
 
     returns:
     -------
@@ -109,14 +114,12 @@ def get_neuron_psths(neurons, events, windows, df):
 
     # iterate over each neuron and event
     for neuron in range(len(neurons)):
-
         psths = []
 
         for event in range(len(events)):
 
         # create psth dictionary
-
-            psth = neurons[neuron].get_psth(event=events[event], df=df,
+            psth = neurons[neuron].get_psth(event=events[event], df=bndl_dfs[df_names[neuron]],
                           window=windows[event], binsize=50, plot=False,
                           event_name=events[event])
 

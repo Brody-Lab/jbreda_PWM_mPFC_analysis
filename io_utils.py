@@ -528,7 +528,7 @@ def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict):
 
     returns
     -------
-    dfs_dict        : dict, containing df for each bndl that has a mask
+    bndl_dfs        : dict, containing df for each bndl that has a mask
     df_names        : list, Ncells long containing dict keys to access df for each cell
     """
     # initialize
