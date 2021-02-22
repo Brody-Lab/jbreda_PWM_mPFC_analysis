@@ -18,7 +18,7 @@ import scipy.io as spio
 from spykes.spykes.plot.neurovis import NeuroVis
 
 
-def initiate_neurons(spks_dict, sess_date):
+def initiate_neurons(spks_dict):
     """
     This function takes spks_dict along with session data and unpacks spike times
     in finite state machine/behavior time & turns into NeuroVis object.
@@ -35,6 +35,7 @@ def initiate_neurons(spks_dict, sess_date):
     """
 
     spk_in_fsm_time = spks_dict["spk_times"] # fsm = behavior time
+    sess_date = spks_dict['date']
     neuron_list = []
 
     for neuron in range(len(spk_in_fsm_time)):
