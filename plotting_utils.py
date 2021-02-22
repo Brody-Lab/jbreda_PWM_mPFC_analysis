@@ -87,7 +87,7 @@ def get_neuron_rasters(neurons, events, windows, bndl_dfs, df_names):
     return neuron_rasters
 
 
-def get_neuron_psths(neurons, events, windows, bndl_dfs, df_names):
+def get_neuron_psths(neurons, events, windows, bndl_dfs, df_names, conditions=None):
     """
     This function can be used to get psths for multiple neurons across multiple events
     with specific time windows for each event
@@ -120,7 +120,7 @@ def get_neuron_psths(neurons, events, windows, bndl_dfs, df_names):
 
         # create psth dictionary
             psth = neurons[neuron].get_psth(event=events[event], df=bndl_dfs[df_names[neuron]],
-                          window=windows[event], binsize=50, plot=False,
+                          window=windows[event], conditions=conditions, binsize=50, plot=False,
                           event_name=events[event])
 
             psths.append(psth)
