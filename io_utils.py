@@ -96,35 +96,34 @@ def load_and_wrangle(beh_path, spks_path, overwrite):
     """
 
     # --Spikes--- (eventually can load/in out with pickle if needed)
-    sess_dir = os.path.dirname(spks_path)
+    sess_path = os.path.dirname(spks_path)
 
-    if os.path.exists(os.path.join(sess_dir, 'spks_dict.pkl')) and overwrite==False:
+    if os.path.exists(os.path.join(sess_path, 'spks_dict.pkl')) and overwrite==False:
 
-        input = open(os.path.join(sess_dir, 'spks_dict.pkl'),"wb")
-        pickle.dump(spks_dict,input)
-        input.close()
+        with open(os.path.join(sess_path, 'spks_dict.pkl'), 'rb') as fh:
+            spks_dict = pickle.load(fh)
 
     else:
         # load, wrangle & save out
         spks_info = load_spks(spks_path)
         spks_dict = make_spks_dict(spks_info)
 
-        output = open(os.path.join(sess_dir, 'spks_dict.pkl'), 'wb')
+        output = open(os.path.join(sess_path, 'spks_dict.pkl'), 'wb')
         pickle.dump(spks_dict, output)
         output.close()
 
     # --Behavior--
     # check if the df has already been created, then either load or wrangle & savout
-    if os.path.exists(os.path.join(sess_dir, 'beh_df.csv')) and overwrite==False:
+    if os.path.exists(os.path.join(sess_path, 'beh_df.csv')) and overwrite==False:
 
-        beh_df = pd.read_csv(os.path.join(sess_dir, 'beh_df.csv'))
+        beh_df = pd.read_csv(os.path.join(sess_path, 'beh_df.csv'))
 
     else:
         # load, wrangle & save out
         beh_info = load_behavior(beh_path)
         beh_df = make_beh_df(beh_info)
 
-        beh_df.to_csv(os.path.join(sess_dir, 'beh_df.csv'), index=False)
+        beh_df.to_csv(os.path.join(sess_path, 'beh_df.csv'), index=False)
 
     return beh_df, spks_dict
 
@@ -146,7 +145,6 @@ def load_spks(spks_path):
     spks_info = spks_info['PWMspkS'][0]
 
     return spks_info
-
 
 def make_spks_dict(spks_info):
     """
@@ -195,11 +193,9 @@ def make_spks_dict(spks_info):
     spks_dict['spk_qual'] = spk_qual
     spks_dict['spk_times'] = spk_times
     spks_dict['mean_wav'] = m_waves #[ncell][tetrode]
-    spks_dict['std_wave'] = s_waves
+    spks_dict['std_wav'] = s_waves
 
     return spks_dict
-
-
 
 def load_behavior(beh_path):
     """
@@ -321,7 +317,7 @@ def make_beh_df(beh_info):
 
 ## === Importing masking info & creating dfs ===
 
-def deal_with_masking(spks_dict, beh_df, sess_dir, threshold=1000):
+def deal_with_masking(spks_dict, beh_df, sess_path, threshold=1000):
     """
     Function that loads masking info based on active bundles for the session, assess masking
     and returns dataframes for each bundle with trials that have not been masked
@@ -330,7 +326,7 @@ def deal_with_masking(spks_dict, beh_df, sess_dir, threshold=1000):
     ------
     spks_dict : dict, with ephys infomration created by make_spks_dict()
     beh_df    : df, with behavior information created by make_beh_df ()
-    sess_dir  : path to directory for a sorted session with mask NPY files for each bundle
+    sess_path  : path to directory for a sorted session with mask NPY files for each bundle
     threshold (optional) : int, number of samples that can be masked during a trial
                            and still considered valid
     returns
@@ -343,19 +339,19 @@ def deal_with_masking(spks_dict, beh_df, sess_dir, threshold=1000):
     mask_dict : dict, with masking information used to create a dataframs, saved as .pkl
     """
 
-    mask_dict = load_masks(spks_dict, sess_dir)
+    mask_dict = load_masks(spks_dict, sess_path)
 
     all_samples_masked, mask_keys = det_samples_masked(mask_dict, beh_df)
 
     all_unmasked_idxs = find_unmasked_idx(all_samples_masked, threshold = threshold)
 
-    bndl_dfs, df_names = make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict)
+    bndl_dfs, df_names = make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict, sess_path)
 
     return bndl_dfs, df_names
 
 ### --- star of fx called by deal_with_masking
 
-def load_masks(spks_dict, sess_dir):
+def load_masks(spks_dict, sess_path):
     """
     Function for loading mask info stored in sorted in sorted session directory
     based on the active tetrodes in the session
@@ -363,7 +359,7 @@ def load_masks(spks_dict, sess_dir):
     inputs
     ------
     spks_dict: dict, containing ephys information created by make_spks_dict()
-    sess_dir : path to directory for a sorted session with mask NPY files for each bundle
+    sess_path : path to directory for a sorted session with mask NPY files for each bundle
 
     returns
     -------
@@ -371,44 +367,53 @@ def load_masks(spks_dict, sess_dir):
     cells, along with array for common time fram for spks & beh. True = Masked, False = Nonmasked
 
     """
+
+    if os.path.exists(os.path.join(sess_path, 'mask_dict.pkl')):
+        print("Loading existing mask_dict...")
+        with open(os.path.join(sess_path, 'mask_dict.pkl'), 'rb') as fh:
+            mask_dict = pickle.load(fh)
+        print("Done loading.")
+
+    else:
+        Print("Creating mask_dict...")
     # intialize space
-    mask_dict = {}
+        mask_dict = {}
 
-    # deal with multiple cells on one tetrode
-    unique_trodes = np.unique(spks_dict['trode_nums'])
-    unique_trodes.sort()
-    mask_dict['uniq_trodes'] = unique_trodes
+        # deal with multiple cells on one tetrode
+        unique_trodes = np.unique(spks_dict['trode_nums'])
+        unique_trodes.sort()
+        mask_dict['uniq_trodes'] = unique_trodes
 
-    for trode in unique_trodes:
+        for trode in unique_trodes:
 
-        # determine (unefficiently) which mask file is correct
-        if trode <= 8:
-            bndl = "bundle1_mask_info"
-        elif trode > 8 <= 16:
-            bndl = "bundle2_mask_info"
-        elif trode > 16 <= 24:
-            bndl = "bundle3_mask_info"
-        elif trode > 24 <= 32:
-            bndl = "bundle4_mask_info"
-        else:
-            print("trode not between 1-32, function will break")
+            # determine (unefficiently) which mask file is correct
+            if trode <= 8:
+                bndl = "bundle1_mask_info"
+            elif trode > 8 <= 16:
+                bndl = "bundle2_mask_info"
+            elif trode > 16 <= 24:
+                bndl = "bundle3_mask_info"
+            elif trode > 24 <= 32:
+                bndl = "bundle4_mask_info"
+            else:
+                print("trode not between 1-32, function will break")
 
-        # load it, flatten & convert to bool (0.0 = noise, 1.0 = signal)
-        print("loading mask info....")
-        bndl_mask = np.load(os.path.join(sess_dir, bndl))
-        bndl_mask = bndl_mask.flatten()
-        bndl_mask_bool = np.where(bndl_mask == 0.0, True, False)
-        mask_dict[bndl]= bndl_mask_bool
-        print('mask info loaded')
+            # load it, flatten & convert to bool (0.0 = noise, 1.0 = signal)
+            print("loading mask info....")
+            bndl_mask = np.load(os.path.join(sess_path, bndl))
+            bndl_mask = bndl_mask.flatten()
+            bndl_mask_bool = np.where(bndl_mask == 0.0, True, False)
+            mask_dict[bndl]= bndl_mask_bool
+            print('mask info loaded')
 
-    # update dictionary with time alignment array
-    mask_fsm = mask2fsm(spks_dict, mask_dict)
-    mask_dict['mask_fsm'] = mask_fsm
+        # update dictionary with time alignment array
+        mask_fsm = mask2fsm(spks_dict, mask_dict)
+        mask_dict['mask_fsm'] = mask_fsm
 
-    # save out
-    output = open(os.path.join(sess_dir, 'mask_dict.pkl'), 'wb')
-    pickle.dump(mask_dict, output)
-    output.close()
+        # save out
+        output = open(os.path.join(sess_path, 'mask_dict.pkl'), 'wb')
+        pickle.dump(mask_dict, output)
+        output.close()
 
     return mask_dict
 
@@ -514,7 +519,7 @@ def find_unmasked_idx(all_samples_masked, threshold=1000):
 
     return all_unmasked_idxs
 
-def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict):
+def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict, sess_path):
     """
     Function to take the indices where trial masking is below threshold and filter a df
     for each bundle, along with a Nells long list for plotting
@@ -525,6 +530,8 @@ def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict):
     mask_keys       : list, which bundles are being masked, created by det_samples_masked()
     beh_df          : df, created in make_beh_df()
     spks_dict       : dict, created in make_spks_dict()
+    sess_path       : str, path to directory for a sorted session where masking info is located &
+                      save out will occur
 
     returns
     -------
@@ -543,24 +550,28 @@ def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict):
             bndl1_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl1_df' : bndl1_df})
             df_names.append('bndl1_df')
+            beh_df.to_csv(os.path.join(sess_path, 'bndl1_df.csv'), index=False)
 
         elif trode > 8 <= 16:
             idx = mask_keys.index("bundle2_mask_info")
             bndl2_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl2_df' : bndl2_df})
             df_names.append('bndl2_df')
+            beh_df.to_csv(os.path.join(sess_path, 'bndl2_df.csv'), index=False)
 
         elif trode > 16 <= 24:
             idx = mask_keys.index("bundle3_mask_info")
             bndl3_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl3_df' : bndl3_df})
             df_names.append('bndl3_df')
+            beh_df.to_csv(os.path.join(sess_path, 'bndl3_df.csv'), index=False)
 
         elif trode > 24 <= 32:
             idx = mask_keys.index("bundle4_mask_info")
             bndl4_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl4_df' : bndl4_df})
             df_names.append('bndl4_df')
+            beh_df.to_csv(os.path.join(sess_path, 'bndl4_df.csv'), index=False)
 
         else:
             print("trode not between 1-32, function will break")

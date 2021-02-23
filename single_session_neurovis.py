@@ -71,6 +71,7 @@ neuron_psths = get_neuron_psths(neurons, events, windows, bndl_dfs, df_names, co
 
 # --- Plot ---
 # iterate over neurons
+print('Plotting Start')
 for nn in range(len(neurons)):
 
     # grab mean waveform for the neuron
@@ -91,7 +92,7 @@ for nn in range(len(neurons)):
 
         # plot average waveform from active tetrode
         for tt in range(4):
-
+            ax3.plot(mean_wav[tt])
             ax3.set_title('Average Waveform')
 
         fig_name = "{sess}_neuron_{neuron}_{event}_{ee}".format(sess = sess_name,
@@ -101,3 +102,4 @@ for nn in range(len(neurons)):
         plt.tight_layout()
         plt.savefig(os.path.join(fig_save_path, fig_name))
         plt.close("all")
+print('Plotting End')
