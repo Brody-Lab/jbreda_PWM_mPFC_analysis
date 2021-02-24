@@ -57,9 +57,9 @@ beh_df_d2_h = beh_df[beh_df['hit_hist'] == 'hit']
 bndl_dfs, df_names = deal_with_masking(spks_dict, beh_df_d2_h, sess_path)
 
 # assign events, windows and conditions
-events = ['aud1_on']
-#windows = [[-300,700], [-500,1000], [-500, 500]]
-windows = [[-1000,6300]]
+events = ['c_poke','aud1_on','aud2_on']
+windows = [[-300,700], [-500,1000], [-500, 500]]
+#windows = [[-1000,6300]]
 condition = 'delay'
 
 # get neurons into NeuroVis objects
@@ -67,7 +67,7 @@ neurons = initiate_neurons(spks_dict)
 
 # create
 neuron_rasters = get_neuron_rasters(neurons, events, windows, bndl_dfs, df_names)
-neuron_psths = get_neuron_psths(neurons, events, windows, bndl_dfs, df_names, conditions=condition)
+neuron_psths = get_neuron_psths(neurons, events, windows, bndl_dfs, df_names, conditions=None)
 
 
 # --- Plot ---
