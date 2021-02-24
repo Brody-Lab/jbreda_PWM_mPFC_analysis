@@ -51,14 +51,14 @@ beh_df, spks_dict = load_and_wrangle(beh_path, spks_path, overwrite=True)
 
 # --- Initialize for plotting ---
 # filter dataframe for 2 second hit trials
-beh_df_d2_h = beh_df[(beh_df['delay'] == 2) & (beh_df['hit_hist'] == 'hit')]
+beh_df_d2_h = beh_df[(beh_df['delay'] == 4) & (beh_df['hit_hist'] == 'hit')]
 
 # deal with masking
 bndl_dfs, df_names = deal_with_masking(spks_dict, beh_df_d2_h, sess_path)
 
 # assign events, windows and conditions
 events = ['c_poke', 'aud1_on', 'aud2_on', 'aud1_on']
-windows = [[-300,700], [-500,1000], [-500, 500], [-1000,2300]]
+windows = [[-300,700], [-500,1000], [-500, 500], [-1000,4300]]
 condition = 'correct_side'
 
 # get neurons into NeuroVis objects
