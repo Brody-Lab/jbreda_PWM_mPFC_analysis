@@ -234,6 +234,9 @@ def make_beh_df(beh_info):
     # initialize data frame
     beh_df = pd.DataFrame()
 
+    # ignore setting with copy warning
+    pd.options.mode.chained_assignment = None
+
     # assign trail n values
     beh_df['trial_num'] = np.arange(1, beh_info['n_completed_trials'] + 1)
 
@@ -311,6 +314,10 @@ def make_beh_df(beh_info):
     beh_df['aud2_off']  = aud2_off
     beh_df['end_state'] = end_state
 
+    # turn warning back on
+    # ignore setting with copy warning
+    pd.options.mode.chained_assignment = 'warn'
+
     return beh_df
 
 def filter_phys_time(full_beh_df, spks_dict):
@@ -336,7 +343,7 @@ def filter_phys_time(full_beh_df, spks_dict):
     for neuron in range(len(spks_dict['spk_times'])):
         starts.append(spks_dict['spk_times'][neuron][0])
         ends.append(spks_dict['spk_times'][neuron][-1])
-     
+
     start_time = max(starts)
     end_time = min(ends)
 
