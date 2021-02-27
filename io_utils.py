@@ -121,7 +121,8 @@ def load_and_wrangle(beh_path, spks_path, overwrite):
     else:
         # load, wrangle & save out
         beh_info = load_behavior(beh_path)
-        beh_df = make_beh_df(beh_info)
+        full_beh_df = make_beh_df(beh_info)
+        beh_df = filter_phys_time(full_beh_df, spks_dict)
 
         beh_df.to_csv(os.path.join(sess_path, 'beh_df.csv'), index=False)
 
@@ -214,7 +215,6 @@ def load_behavior(beh_path):
     beh_info = beh_info["behS"]
 
     return beh_info
-
 
 def make_beh_df(beh_info):
 
@@ -312,6 +312,37 @@ def make_beh_df(beh_info):
     beh_df['end_state'] = end_state
 
     return beh_df
+
+def filter_phys_time(full_beh_df, spks_dict):
+    """
+    Sometimes session is started pre phys or ends post phys. This function removes the trials when
+    phys recording did not occur
+
+    inputs:
+    -------
+    full_beh_df  : df, contianing beh information for the whole session created by
+                   make_beh_df()
+    spks_dict    : dict with ephys information for session & each cell
+
+    returns
+    -------
+    filt_df       : df, contianing beh information only for trials that occured
+                  during ephys recording session
+
+    """
+    starts = []
+    ends = []
+
+    for neuron in range(len(spks_dict['spk_times'])):
+        starts.append(spks_dict['spk_times'][neuron][0])
+        ends.append(spks_dict['spk_times'][neuron][-1])
+     
+    start_time = max(starts)
+    end_time = min(ends)
+
+    filt_df = full_beh_df.query('c_poke > @start_time & hit_state < @end_time')
+
+    return filt_df
 ### --- end of fx called by load_and_wrangle
 
 
