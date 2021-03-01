@@ -700,7 +700,7 @@ def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict, sess_path
             bndl1_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl1_df' : bndl1_df})
             df_names.append('bndl1_df')
-            bndl1_df.to_csv(os.path.join(sess_path, 'bndl1_hits_df.csv'), index=False)
+            bndl1_df.to_csv(os.path.join(sess_path, 'bndl1_hits_d2_d4_df.csv'), index=False)
 
         elif trode > 8 <= 16:
             idx = mask_keys.index("bundle2_mask_info")
@@ -708,21 +708,21 @@ def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict, sess_path
             bndl2_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl2_df' : bndl2_df})
             df_names.append('bndl2_df')
-            bndl2_df.to_csv(os.path.join(sess_path, 'bndl2_hits_df.csv'), index=False)
+            bndl2_df.to_csv(os.path.join(sess_path, 'bndl2_hits_d2_d4_df.csv'), index=False)
 
         elif trode > 16 <= 24:
             idx = mask_keys.index("bundle3_mask_info")
             bndl3_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl3_df' : bndl3_df})
             df_names.append('bndl3_df')
-            beh_df.to_csv(os.path.join(sess_path, 'bndl3_hits_df.csv'), index=False)
+            beh_df.to_csv(os.path.join(sess_path, 'bndl3_hits_d2_d4_df.csv'), index=False)
 
         elif trode > 24 <= 32:
             idx = mask_keys.index("bundle4_mask_info")
             bndl4_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl4_df' : bndl4_df})
             df_names.append('bndl4_df')
-            beh_df.to_csv(os.path.join(sess_path, 'bndl4_hits_df.csv'), index=False)
+            beh_df.to_csv(os.path.join(sess_path, 'bndl4_hits_d2_d4_df.csv'), index=False)
 
         else:
             print("trode not between 1-32, function will break")
