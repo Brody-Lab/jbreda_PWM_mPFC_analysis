@@ -42,7 +42,7 @@ def initiate_neurons(spks_dict):
         spk_times = spk_in_fsm_time[neuron]
 
         # instantiate neuron
-        neuron = NeuroVis(spk_times, name = '{} {}'.format(neuron + 1, sess_date))
+        neuron = NeuroVis(spk_times, name = '{} {}'.format(neuron, sess_date))
         neuron_list.append(neuron)
 
     return neuron_list

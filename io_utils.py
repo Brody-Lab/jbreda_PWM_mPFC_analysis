@@ -121,7 +121,8 @@ def load_and_wrangle(beh_path, spks_path, overwrite):
     else:
         # load, wrangle & save out
         beh_info = load_behavior(beh_path)
-        beh_df = make_beh_df(beh_info)
+        full_beh_df = make_beh_df(beh_info)
+        beh_df = filter_phys_time(full_beh_df, spks_dict)
 
         beh_df.to_csv(os.path.join(sess_path, 'beh_df.csv'), index=False)
 
@@ -215,7 +216,6 @@ def load_behavior(beh_path):
 
     return beh_info
 
-
 def make_beh_df(beh_info):
 
     """
@@ -233,6 +233,9 @@ def make_beh_df(beh_info):
 
     # initialize data frame
     beh_df = pd.DataFrame()
+
+    # ignore setting with copy warning
+    pd.options.mode.chained_assignment = None
 
     # assign trail n values
     beh_df['trial_num'] = np.arange(1, beh_info['n_completed_trials'] + 1)
@@ -311,9 +314,155 @@ def make_beh_df(beh_info):
     beh_df['aud2_off']  = aud2_off
     beh_df['end_state'] = end_state
 
+    # turn warning back on
+    # ignore setting with copy warning
+    pd.options.mode.chained_assignment = 'warn'
+
     return beh_df
+
+def filter_phys_time(full_beh_df, spks_dict):
+    """
+    Sometimes session is started pre phys or ends post phys. This function removes the trials when
+    phys recording did not occur
+
+    inputs:
+    -------
+    full_beh_df  : df, contianing beh information for the whole session created by
+                   make_beh_df()
+    spks_dict    : dict with ephys information for session & each cell
+
+    returns
+    -------
+    filt_df       : df, contianing beh information only for trials that occured
+                  during ephys recording session
+
+    """
+    starts = []
+    ends = []
+
+    for neuron in range(len(spks_dict['spk_times'])):
+        starts.append(spks_dict['spk_times'][neuron][0])
+        ends.append(spks_dict['spk_times'][neuron][-1])
+
+    start_time = max(starts)
+    end_time = min(ends)
+
+    filt_df = full_beh_df.query('c_poke > @start_time & hit_state < @end_time')
+
+    return filt_df
 ### --- end of fx called by load_and_wrangle
 
+## == Selective loading functions to use once neurons of interest are determined
+### ---this function calls all of the above except make_spks_dict
+def selective_load_and_wrangle(beh_path, spks_path, sess_neurons, overwrite):
+    """
+    This function loads behavior and spike data from a single session given path
+    information. If behavior data has already been loaded & wrangled, will load
+    the dataframe instead of creating a new one.
+
+    inputs
+    ------
+    beh_path  : string, path to .mat file with behavior info
+    spks_path : string, path to .mat file with spks info
+    sess_neurons : list, containing 0 indexed neuron numbers to load for a session
+    overwrite (optional, False) : wether or not to overwrite previous dataframe
+    or load up if already made
+
+    returns
+    ------
+    beh_df    :  df (ntrials x items), tidy data frame with behavior information
+                & some relabeling
+    spks_info : ndarray, with spk info from .mat file
+    """
+
+    # --Spikes--- (eventually can load/in out with pickle if needed)
+    sess_path = os.path.dirname(spks_path)
+
+    if os.path.exists(os.path.join(sess_path, 'selective_spks_dict.pkl')) and overwrite==False:
+
+        with open(os.path.join(sess_path, 'selective_spks_dict.pkl'), 'rb') as fh:
+            spks_dict = pickle.load(fh)
+
+    else:
+        # load, wrangle & save out
+        spks_info = load_spks(spks_path)
+        spks_dict = selective_make_spks_dict(spks_info, sess_neurons)
+
+        output = open(os.path.join(sess_path, 'selective_spks_dict.pkl'), 'wb')
+        pickle.dump(spks_dict, output)
+        output.close()
+
+    # --Behavior--
+    # check if the df has already been created, then either load or wrangle & savout
+    if os.path.exists(os.path.join(sess_path, 'beh_df.csv')) and overwrite==False:
+
+        beh_df = pd.read_csv(os.path.join(sess_path, 'beh_df.csv'))
+
+    else:
+        # load, wrangle & save out
+        beh_info = load_behavior(beh_path)
+        full_beh_df = make_beh_df(beh_info)
+        beh_df = filter_phys_time(full_beh_df, spks_dict)
+
+        beh_df.to_csv(os.path.join(sess_path, 'beh_df.csv'), index=False)
+
+    return beh_df, spks_dict
+
+### ---this function calls all of the above except make_spks_dict, here is the edit:
+def selective_make_spks_dict(spks_info, sess_neurons):
+    """
+    Data wrangling function to take ndarry from load_spks() and put into python dict
+    for analysis
+
+    inputs
+    ------
+    spks_info : ndarray, with spk info from .mat file
+    sess_neurons : list, containing 0 indexed neuron numbers to load for a session
+
+    returns
+    -------
+    spks_dict : dict with ephys information for session & each cell
+    """
+
+    # initilaize
+    spks_dict= {}
+    neuron_nums = [] # to be able to confirm indexing in non-selective loading
+    trode_nums = []
+    m_waves = []
+    s_waves = []
+    spk_qual = []
+    spk_times = []
+
+
+    # grab date, spike to behavior time & fs
+    spks_dict['date'] = spks_info['date'][0][0]
+    spks_dict['spk2fsm'] = spks_info['behav_session'][0]['spk2fsm_rt'][0][0][0]#[m, b
+    spks_dict['fs'] = spks_info['fs'][0][0][0]
+
+    # for each pre-selected cell, tetrode number, spike type, mean waveform, std waveform
+    for cell in sess_neurons:
+        trode_nums.append(spks_info['trodenum'][cell][0][0])
+        spk_times.append(spks_info['event_ts_fsm'][cell]) # in beh time
+        m_waves.append(spks_info['waves_mn'][cell].reshape(4,32))
+        s_waves.append(spks_info['waves_std'][cell].reshape(4,32))
+        neuron_nums.append(cell)
+
+        if spks_info['mua'][cell][0][0] == 1:
+            spk_qual.append('multi')
+        elif spks_info['single'][cell][0][0] == 1:
+            spk_qual.append('single')
+        else:
+            raise TypeError("cell not marked as multi or single")
+
+    # append
+    spks_dict['neuron_nums'] = neuron_nums
+    spks_dict['trode_nums'] = trode_nums
+    spks_dict['spk_qual'] = spk_qual
+    spks_dict['spk_times'] = spk_times
+    spks_dict['mean_wav'] = m_waves #[ncell][tetrode]
+    spks_dict['std_wav'] = s_waves
+
+    return spks_dict
 
 ## === Importing masking info & creating dfs ===
 
@@ -368,9 +517,9 @@ def load_masks(spks_dict, sess_path):
 
     """
 
-    if os.path.exists(os.path.join(sess_path, 'mask_dict.pkl')):
+    if os.path.exists(os.path.join(sess_path, 'selective_mask_dict.pkl')):
         print("Loading existing mask_dict...")
-        with open(os.path.join(sess_path, 'mask_dict.pkl'), 'rb') as fh:
+        with open(os.path.join(sess_path, 'selective_mask_dict.pkl'), 'rb') as fh:
             mask_dict = pickle.load(fh)
         print("Done loading.")
 
@@ -411,7 +560,7 @@ def load_masks(spks_dict, sess_path):
         mask_dict['mask_fsm'] = mask_fsm
 
         # save out
-        output = open(os.path.join(sess_path, 'mask_dict.pkl'), 'wb')
+        output = open(os.path.join(sess_path, 'selective_mask_dict.pkl'), 'wb')
         pickle.dump(mask_dict, output)
         output.close()
 
@@ -551,7 +700,7 @@ def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict, sess_path
             bndl1_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl1_df' : bndl1_df})
             df_names.append('bndl1_df')
-            bndl1_df.to_csv(os.path.join(sess_path, 'bndl1_6d_df.csv'), index=False)
+            bndl1_df.to_csv(os.path.join(sess_path, 'bndl1_hits_df.csv'), index=False)
 
         elif trode > 8 <= 16:
             idx = mask_keys.index("bundle2_mask_info")
@@ -559,21 +708,21 @@ def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict, sess_path
             bndl2_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl2_df' : bndl2_df})
             df_names.append('bndl2_df')
-            bndl2_df.to_csv(os.path.join(sess_path, 'bndl2_6d_df.csv'), index=False)
+            bndl2_df.to_csv(os.path.join(sess_path, 'bndl2_hits_df.csv'), index=False)
 
         elif trode > 16 <= 24:
             idx = mask_keys.index("bundle3_mask_info")
             bndl3_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl3_df' : bndl3_df})
             df_names.append('bndl3_df')
-            beh_df.to_csv(os.path.join(sess_path, 'bndl3_6d_df.csv'), index=False)
+            beh_df.to_csv(os.path.join(sess_path, 'bndl3_hits_df.csv'), index=False)
 
         elif trode > 24 <= 32:
             idx = mask_keys.index("bundle4_mask_info")
             bndl4_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl4_df' : bndl4_df})
             df_names.append('bndl4_df')
-            beh_df.to_csv(os.path.join(sess_path, 'bndl4_6d_df.csv'), index=False)
+            beh_df.to_csv(os.path.join(sess_path, 'bndl4_hits_df.csv'), index=False)
 
         else:
             print("trode not between 1-32, function will break")
