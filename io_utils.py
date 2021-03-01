@@ -517,9 +517,9 @@ def load_masks(spks_dict, sess_path):
 
     """
 
-    if os.path.exists(os.path.join(sess_path, 'selective_mask_dict2.pkl')):
+    if os.path.exists(os.path.join(sess_path, 'selective_mask_dict.pkl')):
         print("Loading existing mask_dict...")
-        with open(os.path.join(sess_path, 'selective_mask_dict2.pkl'), 'rb') as fh:
+        with open(os.path.join(sess_path, 'selective_mask_dict.pkl'), 'rb') as fh:
             mask_dict = pickle.load(fh)
         print("Done loading.")
 
