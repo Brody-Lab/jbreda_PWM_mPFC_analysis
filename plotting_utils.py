@@ -50,7 +50,7 @@ def initiate_neurons(spks_dict):
 "get_raster for all neurons and assigned events"
 
 
-def get_neuron_rasters(neurons, events, windows, bndl_dfs, df_names):
+def get_neuron_rasters(neurons, events, windows, bndl_dfs, df_names, conditions=None, binsize = 50):
     """
     This function can be used to get rasters for multiple neurons across multiple events
     with specific time windows for each event
@@ -78,9 +78,10 @@ def get_neuron_rasters(neurons, events, windows, bndl_dfs, df_names):
         for event in range(len(events)):
 
         # create raster dictionary
-            raster = neurons[neuron].get_raster(event = events[event], conditions=None,
+            raster = neurons[neuron].get_raster(event = events[event], conditions=conditions,
                                                 df = bndl_dfs[df_names[neuron]],
-                                                window=windows[event], plot=False)
+                                                window=windows[event], plot=False,
+                                                binsize=binsize)
             rasters.append(raster)
 
         neuron_rasters.append(rasters)
@@ -88,7 +89,7 @@ def get_neuron_rasters(neurons, events, windows, bndl_dfs, df_names):
     return neuron_rasters
 
 
-def get_neuron_psths(neurons, events, windows, bndl_dfs, df_names, conditions=None):
+def get_neuron_psths(neurons, events, windows, bndl_dfs, df_names, conditions=None, binsize=50):
     """
     This function can be used to get psths for multiple neurons across multiple events
     with specific time windows for each event
@@ -121,7 +122,7 @@ def get_neuron_psths(neurons, events, windows, bndl_dfs, df_names, conditions=No
 
         # create psth dictionary
             psth = neurons[neuron].get_psth(event=events[event], df=bndl_dfs[df_names[neuron]],
-                          window=windows[event], conditions=conditions, binsize=50, plot=False,
+                          window=windows[event], conditions=conditions, binsize=binsize, plot=False,
                           event_name=events[event])
 
             psths.append(psth)
