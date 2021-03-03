@@ -123,6 +123,9 @@ def load_and_wrangle(beh_path, spks_path, overwrite):
         beh_info = load_behavior(beh_path)
         full_beh_df = make_beh_df(beh_info)
         beh_df = filter_phys_time(full_beh_df, spks_dict)
+        # find_loudness(beh_df)
+        #
+        # beh_df.head()
 
         beh_df.to_csv(os.path.join(sess_path, 'beh_df.csv'), index=False)
 
@@ -314,6 +317,8 @@ def make_beh_df(beh_info):
     beh_df['aud2_off']  = aud2_off
     beh_df['end_state'] = end_state
 
+    find_loudness(beh_df)
+
     # turn warning back on
     # ignore setting with copy warning
     pd.options.mode.chained_assignment = 'warn'
@@ -350,6 +355,21 @@ def filter_phys_time(full_beh_df, spks_dict):
     filt_df = full_beh_df.query('c_poke > @start_time & hit_state < @end_time')
 
     return filt_df
+
+def find_loudness(beh_df):
+    """Quick function for converting from pair history info to determine
+    which sound was louder in a trial, ignoring pyschometric trials. Pass in beh_df,
+    or any dataframe with 'pair_hist' column to create a new column called loduness"""
+
+    conditions = [
+        (beh_df['pair_hist'] < 5),
+        (beh_df['pair_hist'] >= 5) & (df['pair_hist'] < 9),
+        (beh_df['pair_hist'] >= 9)
+    ]
+
+    values = ['aud_1', 'aud_2', 'psycho']
+    beh_df['louder'] = np.select(conditions, values)
+
 ### --- end of fx called by load_and_wrangle
 
 ## == Selective loading functions to use once neurons of interest are determined
@@ -466,7 +486,7 @@ def selective_make_spks_dict(spks_info, sess_neurons):
 
 ## === Importing masking info & creating dfs ===
 
-def deal_with_masking(spks_dict, beh_df, sess_path, threshold=1000):
+def deal_with_masking(spks_dict, beh_df, sess_path, csv_name, threshold=1000):
     """
     Function that loads masking info based on active bundles for the session, assess masking
     and returns dataframes for each bundle with trials that have not been masked
@@ -475,7 +495,8 @@ def deal_with_masking(spks_dict, beh_df, sess_path, threshold=1000):
     ------
     spks_dict : dict, with ephys infomration created by make_spks_dict()
     beh_df    : df, with behavior information created by make_beh_df ()
-    sess_path  : path to directory for a sorted session with mask NPY files for each bundle
+    sess_path : path to directory for a sorted session with mask NPY files for each bundle
+    csv_name  :vstr, what you want to title the csv, without bndl number. (e.g. 'hit_trials_df')
     threshold (optional) : int, number of samples that can be masked during a trial
                            and still considered valid
     returns
@@ -494,11 +515,11 @@ def deal_with_masking(spks_dict, beh_df, sess_path, threshold=1000):
 
     all_unmasked_idxs = find_unmasked_idx(all_samples_masked, threshold = threshold)
 
-    bndl_dfs, df_names = make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict, sess_path)
+    bndl_dfs, df_names = make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict, sess_path, csv_name)
 
     return bndl_dfs, df_names
 
-### --- star of fx called by deal_with_masking
+### --- start of fx called by deal_with_masking
 
 def load_masks(spks_dict, sess_path):
     """
@@ -668,7 +689,7 @@ def find_unmasked_idx(all_samples_masked, threshold=1000):
 
     return all_unmasked_idxs
 
-def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict, sess_path):
+def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict, sess_path, csv_name):
     """
     Function to take the indices where trial masking is below threshold and filter a df
     for each bundle, along with a Nells long list for plotting
@@ -681,6 +702,7 @@ def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict, sess_path
     spks_dict       : dict, created in make_spks_dict()
     sess_path       : str, path to directory for a sorted session where masking info is located &
                       save out will occur
+    csv_name        : str, what you want to title the csv, without bndl number. (e.g. 'hit_trials_df')
 
     returns
     -------
@@ -700,7 +722,7 @@ def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict, sess_path
             bndl1_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl1_df' : bndl1_df})
             df_names.append('bndl1_df')
-            bndl1_df.to_csv(os.path.join(sess_path, 'bndl1_hits_d2_d4_df.csv'), index=False)
+            bndl1_df.to_csv(os.path.join(sess_path, 'bndl1_' + csv_name + '.csv'), index=False)
 
         elif trode > 8 <= 16:
             idx = mask_keys.index("bundle2_mask_info")
@@ -708,21 +730,21 @@ def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict, sess_path
             bndl2_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl2_df' : bndl2_df})
             df_names.append('bndl2_df')
-            bndl2_df.to_csv(os.path.join(sess_path, 'bndl2_hits_d2_d4_df.csv'), index=False)
+            bndl2_df.to_csv(os.path.join(sess_path, 'bndl2_' + csv_name + '.csv'), index=False)
 
         elif trode > 16 <= 24:
             idx = mask_keys.index("bundle3_mask_info")
             bndl3_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl3_df' : bndl3_df})
             df_names.append('bndl3_df')
-            beh_df.to_csv(os.path.join(sess_path, 'bndl3_hits_d2_d4_df.csv'), index=False)
+            beh_df.to_csv(os.path.join(sess_path, 'bndl3_' + csv_name + '.csv'), index=False)
 
         elif trode > 24 <= 32:
             idx = mask_keys.index("bundle4_mask_info")
             bndl4_df = beh_df.iloc[all_unmasked_idxs[idx]]
             bndl_dfs.update({'bndl4_df' : bndl4_df})
             df_names.append('bndl4_df')
-            beh_df.to_csv(os.path.join(sess_path, 'bndl4_hits_d2_d4_df.csv'), index=False)
+            beh_df.to_csv(os.path.join(sess_path, 'bndl4_' + csv_name + '.csv'), index=False)
 
         else:
             print("trode not between 1-32, function will break")
