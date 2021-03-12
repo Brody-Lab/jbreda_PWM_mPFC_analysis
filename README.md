@@ -3,8 +3,10 @@
 repository for analysis of PWM ephys data (as of 2020_1_6 this is for wireless mPFC tetrode recordings)
 
 # TODO
-* get preprocessed 0ing info
-* `prep_protocol_info` currently a hard coded script, updated to flexible fx
+* gaussian kernel
+* turn 0 bins to Nans
+* consider extending masking protocols given ^
+* first sound response monoton function
 
 ## Assumptions
 
@@ -38,21 +40,16 @@ repository for analysis of PWM ephys data (as of 2020_1_6 this is for wireless m
 
   This function takes a behavior session, runs `get_ksphy_results_J` to get behavior alignment info (could also run `find_wiresless_sess_J` instead if you want), and loads the correct behavior session from bdata. Then, it pulls out a variety of relevant trial information for PWM (eg n_done_trials, sound_delay_time), and saves them into a struct `behS` as `protocol_info.mat`. Along with the functions above, this was done for the sake of export into python & load into dictionaries.
 
-### utils (for matlab fxs)
+### matlab_utils
 (in no specific order)
 1. `bundle_rename.m` is a script I used to rename all my sorted sessions from `session_name_preprocessinfo_firstbundle_forkilosort` to `session_name_bundle1_forkilosrt` to better align with Tyler's code
+2.  `ttl_match.mat` is an output from `find_wireless_sess_J` that I used in the `mat_to_python` notebook above and sometimes use it to check and remind myself what the output is :D
 
-2. `mat_to_python_sess_info.ipynb` is a jupyter notebook that has code for important matlab structures and converting them to python dictionaries
+3. `readmda.m` is from mountainlab [git](https://github.com/flatironinstitute/mountainlab/tree/master/matlab/mdaio) & used to load .mda files into matlab
 
-3.  `ttl_match.mat` is an output from `find_wireless_sess_J` that I used in the `mat_to_python` notebook above and sometimes use it to check and remind myself what the output is :D
+4. `kilosort_preprocess_mask_forcluster` is a function I edited to grab the masking data for a session (ie at what indices was the bundle zeroed out). As of 02/07/2021, I only ran on a single file and it will need to be adjusted to run on a batch of sessions.
 
-4. `readmda.m` is from mountainlab [git](https://github.com/flatironinstitute/mountainlab/tree/master/matlab/mdaio) & used to load .mda files into matlab
-
-5. `kilosort_preprocess_mask_forcluster` is a function I edited to grab the masking data for a session (ie at what indices was the bundle zeroed out). As of 02/07/2021, I only ran on a single file and it will need to be adjusted to run on a batch of sessions.
-
-### phy helpers
-
-These functions are copied from [here](https://github.com/cortex-lab/spikes/tree/master/preprocessing/phyHelpers) & are primarily used to interact with kilosort output & load in matlab. Of note, I wrote an additional function `readClusterSpikeQualityCSV.m` because of how I sort my sessions. In short, **everything** that is a cell is marked in `cluster_group.tsv` as `good`, so I made in additional label called spike quaility (`sq`) saved as `cluster_sq.tsv`that informs whether a cell is multi or single. I've documented this well in `get_kspy_results_J.m` & even if you don't sort like this, you can use the function.
+5.`phy helpers` These functions are copied from [here](https://github.com/cortex-lab/spikes/tree/master/preprocessing/phyHelpers) & are primarily used to interact with kilosort output & load in matlab. Of note, I wrote an additional function `readClusterSpikeQualityCSV.m` because of how I sort my sessions. In short, **everything** that is a cell is marked in `cluster_group.tsv` as `good`, so I made in additional label called spike quaility (`sq`) saved as `cluster_sq.tsv`that informs whether a cell is multi or single. I've documented this well in `get_kspy_results_J.m` & even if you don't sort like this, you can use the function.
 
 
 ## Analysis (python)
@@ -69,7 +66,20 @@ pip install spikeinterface (usually uses python=3.6)
 pip install neo
 ```
 
-### data_sdc_20190902_145404_exploratory_analysis.ipynb
+### Current status
+Importing behavior & spiking information from matlab pipeline above. First tested out on single session. Realized a lot more masking was happening than anticipated & had to deal with that (note each bundle has a different mask & I am only analyzing between sound1 and sound2). Plotted all neurons/sessions aligned to first & second sound. Selected a subset that looked interesting/had high enough firing rates. Met with Carlos on 3/4 and discussed neurons/figures/next steps.
+
+### Notebooks & Scripts
+1. `data_sdc_20190902_145404_exploratory_analysis.ipynb`
+   1. initial notebook used to write & test code on a single session with cells on multiple bundles.
+   2. This was eventually turned into `single_session_neurovis.py`
+2. `W122_08_06_2019_1_fromSD.ipynb`
+   1. Similar to previous notebook but cleaner & was used to test out changes in spykes code to deal with plotting bugs
+3. `masking_info`
+   1. this folder contains figures & initial notebook scrips to assess which sessions had extensive masking. *Note* it should be modified/re-run to not include sessions pre/post ephys session that lead to inflation.
+4. `spykes_io_tutorial`
+   1. How to import & plot using spykes base code (for Dan)
+
 
 This is the notebook I have started to write code in for plotting neural data aligned to behavior for a single session (20190902). I import the behavior & spike data extracted in the matlab functions above, wrangle them into a dataframe or dictionary, respectively, and then use a modified version of [Spykes](https://github.com/KordingLab/spykes) package to plot. It is a work in progress with current TODOs at the top. Most 'mature' functions can be found in `utils.py`. **The goal** of this is to eventually write a script that given the name of a session, can import behavior & spike info, and for a given set of events can get raster and psth info, plot it, and save out.
 
