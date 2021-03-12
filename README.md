@@ -49,17 +49,19 @@ repository for analysis of PWM ephys data (as of 2020_1_6 this is for wireless m
 
 4. `kilosort_preprocess_mask_forcluster` is a function I edited to grab the masking data for a session (ie at what indices was the bundle zeroed out). As of 02/07/2021, I only ran on a single file and it will need to be adjusted to run on a batch of sessions.
 
-5.`phy helpers` These functions are copied from [here](https://github.com/cortex-lab/spikes/tree/master/preprocessing/phyHelpers) & are primarily used to interact with kilosort output & load in matlab. Of note, I wrote an additional function `readClusterSpikeQualityCSV.m` because of how I sort my sessions. In short, **everything** that is a cell is marked in `cluster_group.tsv` as `good`, so I made in additional label called spike quaility (`sq`) saved as `cluster_sq.tsv`that informs whether a cell is multi or single. I've documented this well in `get_kspy_results_J.m` & even if you don't sort like this, you can use the function.
+5. `phy helpers` These functions are copied from [here](https://github.com/cortex-lab/spikes/tree/master/preprocessing/phyHelpers) & are primarily used to interact with kilosort output & load in matlab. Of note, I wrote an additional function `readClusterSpikeQualityCSV.m` because of how I sort my sessions. In short, **everything** that is a cell is marked in `cluster_group.tsv` as `good`, so I made in additional label called spike quaility (`sq`) saved as `cluster_sq.tsv`that informs whether a cell is multi or single. I've documented this well in `get_kspy_results_J.m` & even if you don't sort like this, you can use the function.
 
 
 ## Analysis (python)
-```conda create -n PWM_ephys python=3.7 pip numpy matplotlib scipy scikit-learn h5py pyqt cython pillow
+```
+conda create -n PWM_ephys python=3.7 pip numpy matplotlib scipy scikit-learn h5py pyqt cython pillow
 
 conda activate PWM_ephys
 pip install spykes
 pip install black
 pip install seaborn
 pip install jupyter
+pip3 install jedi==0.17.2 # tab complete issue
 
 --- have but might not need ---
 pip install spikeinterface (usually uses python=3.6)
@@ -75,26 +77,16 @@ Importing behavior & spiking information from matlab pipeline above. First teste
    2. This was eventually turned into `single_session_neurovis.py`
 2. `W122_08_06_2019_1_fromSD.ipynb`
    1. Similar to previous notebook but cleaner & was used to test out changes in spykes code to deal with plotting bugs
-3. `masking_info`
+3. `selective_neurovis.ipynb`
+   1. This notebook import info from cells that I deemed 'interesting' based on initial plots. It then iterates over all of them to make a variety of plots in preparation for 3/4 meeting with carlos. **TODO** turn this into a script.
+4. `io_utils.py`
+   1. Functions used for loading and wrangling data from matlab/brodylab database & dealing with masking
+5. `plotting_utils.py`
+   1. Functions for iterating over neurons/sessions to create spykes objects for plotting
+6. `masking_info`
    1. this folder contains figures & initial notebook scrips to assess which sessions had extensive masking. *Note* it should be modified/re-run to not include sessions pre/post ephys session that lead to inflation.
-4. `spykes_io_tutorial`
+7. `spykes_io_tutorial`
    1. How to import & plot using spykes base code (for Dan)
 
-
-This is the notebook I have started to write code in for plotting neural data aligned to behavior for a single session (20190902). I import the behavior & spike data extracted in the matlab functions above, wrangle them into a dataframe or dictionary, respectively, and then use a modified version of [Spykes](https://github.com/KordingLab/spykes) package to plot. It is a work in progress with current TODOs at the top. Most 'mature' functions can be found in `utils.py`. **The goal** of this is to eventually write a script that given the name of a session, can import behavior & spike info, and for a given set of events can get raster and psth info, plot it, and save out.
-
-### utils.py
-
-This contains functions I am current using in the notebook above & will eventually be used in the larger script
-
-1.  `load_and_wrangle` which takes a path to behS and spkS and loads/wrangles them. Overwrite option if behavior has already been loaded & saved out as .csv Calls:
-  a. `load_nested_mat` for dealing w/ the behS
-  b. `load_behavior` loads behS into a dict
-  c. `load_spks` loads spkS into a dict
-  d. `make_beh_df` wrangles behavior dictionary into a df
-
-2. `initiate_neurons` takes spike dictionary and creates `NeuroVis` object for each neuron
-
 ### spykes
-
-This is a package form the Kording lab for making nice rasters/psths in python. I am currently using spyes.plot.NeuroVis. I have made some changes to their plotting functions to allow for axis to be assigned/titles to be made. Additionally, some of this code is outdated & should be re-written w/ seaborn integration eventually. To use their analysis/plotting tools, you need to pass spike times (in behavior time) into the `NeuroVis` class to create a usable object. You do not need to (and should not) event center your times to use this code; it will do that for you.
+This is a package form the Kording lab for making nice rasters/psths in python. I [forked their repository](https://github.com/jess-breda/spykes) and store it one folder up in my github folder. I have been using the `Spykes/plot/NeuroVis` code & editing it.
