@@ -123,10 +123,8 @@ def load_and_wrangle(beh_path, spks_path, overwrite):
         beh_info = load_behavior(beh_path)
         full_beh_df = make_beh_df(beh_info)
         beh_df = filter_phys_time(full_beh_df, spks_dict)
-        # find_loudness(beh_df)
-        #
-        # beh_df.head()
 
+        # beh_df.head()
         beh_df.to_csv(os.path.join(sess_path, 'beh_df.csv'), index=False)
 
     return beh_df, spks_dict
@@ -318,6 +316,8 @@ def make_beh_df(beh_info):
     beh_df['end_state'] = end_state
 
     find_loudness(beh_df)
+    find_first_sound(beh_df)
+
 
     # turn warning back on
     # ignore setting with copy warning
@@ -363,12 +363,29 @@ def find_loudness(beh_df):
 
     conditions = [
         (beh_df['pair_hist'] < 5),
-        (beh_df['pair_hist'] >= 5) & (df['pair_hist'] < 9),
+        (beh_df['pair_hist'] >= 5) & (beh_df['pair_hist'] < 9),
         (beh_df['pair_hist'] >= 9)
     ]
 
     values = ['aud_1', 'aud_2', 'psycho']
     beh_df['louder'] = np.select(conditions, values)
+
+def find_first_sound(beh_df):
+    """
+    Quick function for converting from pair history info to determine the loudness
+    of the first sound in a trial
+    """
+
+    conditions = [
+        (beh_df['pair_hist'] == 1) | (beh_df['pair_hist'] == 6),
+        (beh_df['pair_hist'] == 2) | (beh_df['pair_hist'] == 7),
+        (beh_df['pair_hist'] == 3) | (beh_df['pair_hist'] == 8),
+        (beh_df['pair_hist'] == 4), (beh_df['pair_hist'] == 5),
+        (beh_df['pair_hist'] >= 9)
+    ]
+
+    values = ['0.0027', '0.0073', '0.0197', '0.0531*', '0.0001*', 'psycho']
+    beh_df['first_sound'] = np.select(conditions, values)
 
 ### --- end of fx called by load_and_wrangle
 
