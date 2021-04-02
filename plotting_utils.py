@@ -18,6 +18,80 @@ import scipy.io as spio
 from spykes.spykes.plot.neurovis import NeuroVis
 
 
+def get_spike_counts(session_spk_times, session_trial_times, bin_size, mode, trial_len='same'):
+
+    """
+    Function that takes spike time information for a session split by trials and binarizes or counts the
+    spike information for further analyses
+
+    Inputs
+    ------
+    session_spk_times   : list, list of list N trials long, each list contains spike times for the
+                          nth trial
+    session_trial_times : list, N trials X 2, start and stop times for each trial
+    bin_size            : int, size of sliding bin to use in seconds
+    mode                : str, whether binirze spike counts for a bin ('binary)', or count them ('count')
+    trial_len           : str, whether to pack trials of different lenghts with 0s to make all the same
+                          length ('same') or use the ending time ('end'), default='same'
+
+    Returns
+    -------
+    session_spk_binary  : array_like, N trials X trial_len, biniarize spike train for each trial
+
+    Notes
+    -----
+    For binarizing data, a 0.001 s window does quite well, but there will still be cases of 2-3 spikes in a bin
+    only being counted as 1 spike. This appears to be quite rare on the scale of 2-5 bins on 25% of trials
+    """
+
+    # initialize
+    session_spk_counts = []
+
+    # iterate over spikes for each trial
+    for itrial, trial_spks in enumerate(tqdm(session_spk_times)):
+
+        # grab start time
+        t_start = session_trial_times[itrial][0]
+
+        # determine which end time to use given inputs
+        # NOTE this assumes 6s delays are included so maximum t_len = 9.9 seconds
+        if trial_len == 'same':
+            t_end = t_start + 9.9
+        elif trial_len == 'end':
+            t_end = session_trial_times[itrial][1]
+        else:
+            print('This is not a valid_trial length type')
+
+        # initialize bin structure to include all bins form [0 to bin_size]
+        half_bin = bin_size / 2
+        bin_centers = np.arange(t_start + half_bin, t_end, bin_size)
+        n_bins = len(bin_centers)
+
+        # updated for each trial
+        trial_spk_counts = np.zeros((n_bins))
+
+        for ibin in range(n_bins):
+            # for each of the spikes in the ith trial, do any fit in the ith bin?
+            if mode == 'binary':
+                spike_in_ibin = np.logical_and(session_spk_times[itrial] >= (bin_centers[ibin] - half_bin),
+                                               session_spk_times[itrial] <= (bin_centers[ibin] + half_bin))
+
+                # if there is a spike in the bin, report it
+                if np.sum(spike_in_ibin) > 0:
+                    trial_spk_counts[ibin] = 1
+
+            elif mode == 'count':
+                # for each of the spikes in the ith trial, how many fit into the ith bin?
+                n_spike_in_bin = np.sum(np.logical_and(session_spk_times[itrial] >= (bin_centers[ibin] - half_bin),
+                                                       session_spk_times[itrial] <= (bin_centers[ibin] + half_bin)))
+
+                trial_spk_counts[ibin] = n_spike_in_bin
+
+        session_spk_counts.append(trial_spk_counts)
+
+    return session_spk_counts         
+
+
 def initiate_neurons(spks_dict):
     """
     This function takes spks_dict along with session data and unpacks spike times
