@@ -326,6 +326,8 @@ def make_beh_df(beh_info):
     return beh_df
 
 def filter_phys_time(full_beh_df, spks_dict):
+
+
     """
     Sometimes session is started pre phys or ends post phys. This function removes the trials when
     phys recording did not occur
@@ -349,8 +351,8 @@ def filter_phys_time(full_beh_df, spks_dict):
         starts.append(spks_dict['spk_times'][neuron][0])
         ends.append(spks_dict['spk_times'][neuron][-1])
 
-    start_time = max(starts)
-    end_time = min(ends)
+    start_time = np.max(starts)
+    end_time = np.min(ends)
 
     filt_df = full_beh_df.query('c_poke > @start_time & hit_state < @end_time')
 

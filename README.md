@@ -62,10 +62,27 @@ pip install black
 pip install seaborn
 pip install jupyter
 pip3 install jedi==0.17.2 # tab complete issue
+pip install tqdm
 
 --- have but might not need ---
 pip install spikeinterface (usually uses python=3.6)
 pip install neo
+```
+
+OR
+
+```
+conda create -n PWM_ephys python=3.7 pip numpy matplotlib scipy scikit-learn h5py pyqt cython pillow black seaborn jupyter
+conda activate PWM_ephys
+pip3 install jedi==0.17.2
+pip install tqdm
+
+```
+
+and, for now, one directory up from this repo clone my spykes fork
+```
+cd ..
+git clone https://github.com/jess-breda/spykes.git
 ```
 
 ### Current status

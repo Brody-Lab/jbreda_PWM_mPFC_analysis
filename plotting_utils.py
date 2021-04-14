@@ -47,7 +47,7 @@ def split_spks_by_trial(spk_times, df):
     for idx, trial in df.iterrows():
 
         # grab start time 500 ms before c poke
-        trial_start = trial['c_poke'] -0.005
+        trial_start = trial['c_poke'] -0.5
 
         # create end time so delays have same length
         if trial['delay'] == 2:
