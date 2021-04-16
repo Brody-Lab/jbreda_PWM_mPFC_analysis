@@ -769,3 +769,212 @@ def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict, sess_path
             print("trode not between 1-32, function will break")
 
     return bndl_dfs, df_names
+
+
+""" Functions for event centering spk times"""
+
+def split_spks_by_trial(spk_times, df):
+    """
+    Function that converts spikes for a whole trial (1d) into array where rows are trials
+    and columns are spk times within a trial for a neuron, added to dict with other trial level info
+
+    inputs
+    ------
+    spk_times : arr-like, 1d containing spk times in seconds for a single neuron for a session
+    df        : df, containing behavior information for a trial
+
+    returns
+    -------
+    trial_spks_dict : dict, containing trial number (w/ respect to whole session), start and stop times
+                      for a trial and the spks occuring in a a trial in s
+    """
+
+    # initialize
+    trial_spks_dict = {}
+    trial_nums = []
+    trial_starts = []
+    trial_stops = []
+    trial_spks = []
+
+    # make counter because dataframe idx is not continous
+    # instead, it represents overall trial number with respect to start of session
+    itrial = 0
+
+    for idx, trial in df.iterrows():
+
+        # grab start time 500 ms before c poke
+        trial_start = trial['c_poke'] -0.5
+
+        # create end time so delays have same length
+        if trial['delay'] == 2:
+            trial_end = trial_start + 5.5
+        elif trial['delay'] == 4:
+            trial_end = trial_start + 7.7
+        elif trial['delay'] == 6:
+            trial_end = trial_start + 9.9
+        else:
+            print('Trial delay is not 2, 4 or 6 seconds- this is not correct')
+
+        # append trial info
+        trial_nums.append(idx)
+        trial_starts.append(trial_start)
+        trial_stops.append(trial_end)
+
+        # grab spike time within trial window & append them
+        trial_spks.append(spk_times[np.logical_and(spk_times >= trial_start, spk_times <= trial_end)])
+
+
+    trial_spks_dict['trial_nums'] = trial_nums
+    trial_spks_dict['trial_times'] = trial_starts, trial_stops
+    trial_spks_dict['trial_spks'] = trial_spks
+
+    return trial_spks_dict
+
+def align_neuron_to_events(beh_df, neuron_spks, delay_mode=True):
+
+    """Wrapper function for event alignment for a single neuron spk times
+
+    Params:
+    ------
+    beh_df : df (ntrials x items), tidy data frame with behavior information
+                & some relabeling
+    neuron_spks : list, single neuron output from split_spks_by_trial()
+    delay_mode  : bool, whether or not to aligned to variable delay peroid (optional, default = True)
+
+    Returns:
+    -------
+    algined : dict, keys = event being aligned to, values = spks by trial for event
+    """
+
+    aligned = stimuli_align(beh_df, neuron_spks)
+
+    if delay_mode == True:
+
+        delay = delay_align(beh_df, neuron_spks)
+
+        full = dict(aligned, **delay)
+
+        return full
+
+    else:
+        return algined
+
+def stimuli_align(beh_df, neuron_spks):
+
+    """Function for aligning spike times to certain stimuli in the trial
+
+    Params
+    ------
+    beh_df : df (ntrials x items), tidy data frame with behavior information
+                & some relabeling
+    neuron_spks : list, single neuron output from split_spks_by_trial()
+
+    Returns
+    -------
+    stimuli_dict : dict with events centered to stimuli happening on all trials"""
+
+    # specific events and windows
+    df_event = ['aud1_on', 'aud1_off', 'aud2_on', 'aud2_off', 'aud1_on']
+    names = ['aud1on', 'aud1off', 'aud2on', 'aud2off', 'trial_all']
+    windows = [[-400, 600], [-500, 500], [-400, 600], [-500, 500], [-100, 5000]]
+
+
+    stimuli_dict = {}
+
+    for event,name,window in zip(df_event,names,windows):
+
+        # intialize a list to push to in the dictionary
+        stimuli_dict[name] = []
+
+        for itrial, row in beh_df.iterrows():
+
+            trial_spks = neuron_spks['trial_spks'][itrial]
+
+            # grab alignment time
+            align_time = row[event]
+
+            # create windows
+            start = align_time + (window[0] * 0.001)
+            stop  = align_time + (window[1] * 0.001)
+
+             # grab spks in the window
+            spks_in_window = trial_spks[np.logical_and(trial_spks > start, trial_spks < stop)]
+            event_aligned = spks_in_window - align_time
+
+            # append
+            stimuli_dict[name].append(event_aligned)
+
+    return stimuli_dict
+
+def delay_align(beh_df, neuron_spks):
+    """Function for extracting info for specific delay lengths
+
+    Params
+    ------
+    beh_df : df (ntrials x items), tidy data frame with behavior information
+                & some relabeling
+    neuron_spks : list, single neuron output from split_spks_by_trial()
+
+    Returns
+    -------
+    delay_dict : dict with events centered and contianing spks specific to delay length
+
+    Notes
+    -----
+    this code is very bulky, but it does the job. future Jess don't judge me
+    """
+
+    # hard code windows and names of trial types
+    delay_windows = [[0, 2000],[-200, 2400], [0, 4000], [-200, 4400]]
+    delay_names = ['delay2s', 'trial2s', 'delay4s', 'trial4s']
+
+
+    L =[[],[],[],[]]
+
+    # iterate over each trial
+    for itrial, row in beh_df.iterrows():
+
+        trial_spks = neuron_spks['trial_spks'][itrial]
+        d_align_time = row['aud1_off']
+        t_align_time = row['aud1_on']
+
+        if row['delay'] == 2:
+
+            # this grabs just delay period
+            d = 0
+            d_start  = d_align_time + (delay_windows[d][0] * 0.001)
+            d_stop   = d_align_time + (delay_windows[d][1] * 0.001)
+
+            spks_in_delay = trial_spks[np.logical_and(trial_spks > d_start, trial_spks < d_stop)]
+            delay_aligned = spks_in_delay - d_align_time
+            L[d].append(delay_aligned)
+
+            # this grab the whole trial
+            t = 1
+            t_start  = t_align_time + (delay_windows[t][0] * 0.001)
+            t_stop   = t_align_time + (delay_windows[t][1] * 0.001)
+
+            spks_in_trial = trial_spks[np.logical_and(trial_spks > t_start, trial_spks < t_stop)]
+            trial_aligned = spks_in_trial - t_align_time
+            L[t].append(trial_aligned)
+
+        elif row['delay'] == 4:
+
+            d = 2
+            d_start  = d_align_time + (delay_windows[d][0] * 0.001)
+            d_stop   = d_align_time + (delay_windows[d][1] * 0.001)
+
+            spks_in_delay = trial_spks[np.logical_and(trial_spks > d_start, trial_spks < d_stop)]
+            delay_aligned = spks_in_delay - d_align_time
+            L[d].append(delay_aligned)
+
+            t = 3
+            t_start  = t_align_time + (delay_windows[t][0] * 0.001)
+            t_stop   = t_align_time + (delay_windows[t][1] * 0.001)
+
+            spks_in_trial = trial_spks[np.logical_and(trial_spks > t_start, trial_spks < t_stop)]
+            trial_aligned = spks_in_trial - t_align_time
+            L[t].append(trial_aligned)
+
+
+    return dict(zip(delay_names, L))
