@@ -824,9 +824,9 @@ def split_spks_by_trial(spk_times, df):
         trial_spks.append(spk_times[np.logical_and(spk_times >= trial_start, spk_times <= trial_end)])
 
 
-    trial_spks_dict['trial_nums'] = trial_nums
-    trial_spks_dict['trial_times'] = trial_starts, trial_stops
-    trial_spks_dict['trial_spks'] = trial_spks
+    trial_spks_dict['nums'] = trial_nums
+    trial_spks_dict['times'] = trial_starts, trial_stops
+    trial_spks_dict['spks'] = trial_spks
 
     return trial_spks_dict
 
@@ -838,7 +838,7 @@ def align_neuron_to_events(beh_df, neuron_spks, delay_mode=True):
     ------
     beh_df : df (ntrials x items), tidy data frame with behavior information
                 & some relabeling
-    neuron_spks : list, single neuron output from split_spks_by_trial()
+    neuron_spks : list, single neuron output from split_spks_by_trial() trial_spks_dict['trial_spks']
     delay_mode  : bool, whether or not to aligned to variable delay peroid (optional, default = True)
 
     Returns:
@@ -888,7 +888,7 @@ def stimuli_align(beh_df, neuron_spks):
 
         for itrial, row in beh_df.iterrows():
 
-            trial_spks = neuron_spks['trial_spks'][itrial]
+            trial_spks = neuron_spks['spks'][itrial]
 
             # grab alignment time
             align_time = row[event]
@@ -934,7 +934,7 @@ def delay_align(beh_df, neuron_spks):
     # iterate over each trial
     for itrial, row in beh_df.iterrows():
 
-        trial_spks = neuron_spks['trial_spks'][itrial]
+        trial_spks = neuron_spks['spks'][itrial]
         d_align_time = row['aud1_off']
         t_align_time = row['aud1_on']
 
