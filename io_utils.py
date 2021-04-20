@@ -773,6 +773,55 @@ def make_unmasked_dfs(all_unmasked_idxs, mask_keys, beh_df, spks_dict, sess_path
 
 """ Functions for event centering spk times"""
 
+def event_align_session(spks_dict, beh_df, sess_path, overwrite=False, delay_mode=True):
+    """ Function for alining spike times from each neuron in a session to relevant events
+    and saving out as a dictionary
+
+    Params:
+    ------
+    spks_dict  :
+    beh_df     : df (ntrials x items), tidy data frame with behavior information & some relabeling
+    sess_path  : string, path to session folder in bucket
+    overwrite  : bool, whether or not to overwrite previous dictionary, (optional, defualt = False)
+    delay_mode : bool, whether or not to aligned to variable delay peroid (optional, default = True)
+
+    Returns:
+    --------
+    session_algined : dict, nested with dicts of aligned spk times for each neuron
+    """
+
+    # check to see if already there, load in if so
+    file_name = 'event_aligned_spks.pkl'
+    if os.path.exists(os.path.join(sess_path, file_name)) and overwrite==False:
+
+        print('loading from file...')
+
+        with open(os.path.join(sess_path, file_name), 'rb') as fh:
+            session_aligned = pickle.load(fh)
+    else:
+
+        print('no file found, running alignment for session')
+
+        # initialize information
+        session_spks = spks_dict['spk_times']
+        n_neurons = len(session_spks)
+        session_aligned = {}
+
+        for ineuron in range(n_neurons):
+
+            # TODO saving out additional info from this might be nice at some point
+            trial_spks = split_spks_by_trial(session_spks[ineuron], beh_df)
+            neuron_aligned = align_neuron_to_events(beh_df, trial_spks, delay_mode=delay_mode)
+            session_aligned[ineuron] = neuron_aligned
+
+        # save out
+        output = open(os.path.join(sess_path, file_name), 'wb')
+        pickle.dump(session_aligned, output)
+        output.close()
+
+
+    return session_aligned
+
 def split_spks_by_trial(spk_times, df):
     """
     Function that converts spikes for a whole trial (1d) into array where rows are trials
