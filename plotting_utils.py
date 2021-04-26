@@ -39,8 +39,9 @@ def get_spike_counts(trial_spks_dict, bin_size, mode, trial_len='same'):
 
     Notes
     -----
-    For binarizing data, a 0.001 s window does quite well, but there will still be cases of 2-3 spikes in a bin
-    only being counted as 1 spike. This appears to be quite rare on the scale of 2-5 bins on 25% of trials
+    For binarizing data, a average isi is ~ 0.01 to 0.05 ms. In 1 ms bins there will still be cases of 2-3
+    spikes in a bin only being counted as 1 spike. This appears to be quite rare on the scale of 2-5 bins
+    on 25% of trials
     """
 
     # initialize & extract

@@ -6,7 +6,6 @@
 *.bin
 *.mda
 *.asv
-*.npy
 *.tsv
 *.phy
 

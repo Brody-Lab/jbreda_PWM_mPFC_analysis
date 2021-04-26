@@ -974,7 +974,7 @@ def delay_align(beh_df, neuron_spks):
     """
 
     # hard code windows and names of trial types
-    delay_windows = [[0, 2000],[-200, 2400], [0, 4000], [-200, 4400]]
+    delay_windows = [[-150, 2150],[-200, 2400], [-150, 4150], [-200, 4400]]
     delay_names = ['delay2s', 'trial2s', 'delay4s', 'trial4s']
 
 
