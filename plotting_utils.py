@@ -14,11 +14,118 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import scipy.io as spio
+from scipy import stats
 # stored one repo up in my fork of Spykes
 from spykes.spykes.plot.neurovis import NeuroVis
 
 
+"PSTHs"
 
+def binarize_event(event_aligned_spks, window, bin_size):
+
+    """
+    Function for taking event centered spike times and binarizing them for PSTHs
+
+    params
+    ------
+    event_aligned_spks : event_aligned spike times for a single neuron & event from align_neuron_to_events()
+    window : window of time around event to binarize (NOTE: this is limited by the windows in simuli_align()
+    bin_size : int, binsize in ms to use for determining if there is a spike or not
+
+    returns
+    -------
+    binarized_spks : list, (1 x n_trials) with binarized spike counts for a single event and cell
+
+    notes
+    -----
+    after checking a few neruons, avereage ISI is 10-50 ms, bin_size should be < 10 and > 1 ms to balance
+    accuracy and speed
+    """
+
+    # initialize
+    binarized_spks = []
+    half_bin = bin_size / 2
+    bin_centers = np.arange((window[0] * 0.001) + half_bin, (window[1] * 0.001), bin_size)
+    n_bins = len(bin_centers)
+
+    # iterate over each trial for an event
+    for trial_spks in range(len(event_aligned_spks)):
+
+        binarized_trial = np.zeros((n_bins))
+
+        # iterate over each time bin in a trial
+        for ibin in range(n_bins):
+
+            # for each of the spikes in the ith trial, do any fit in the ith bin?
+            spk_in_ibin = np.logical_and(event_aligned_spks[trial_spks] >= (bin_centers[ibin] - half_bin),
+                                        event_aligned_spks[trial_spks] <= (bin_centers[ibin] + half_bin))
+
+            # if yes, report it
+            if np.sum(spk_in_ibin) > 0:
+                binarized_trial[ibin] = 1
+
+        binarized_spks.append(binarized_trial)
+
+    return binarized_spks
+
+def gaussian(x, mu, sigma):
+    "Quick fx for guassian distribution"
+    return 1 / (sigma * np.sqrt(2 * np.pi)) * np.exp(-1/2 * ((x - mu)/sigma)**2)
+
+def make_gaussian_kernal(x, mu, sigma):
+    "Qucik function for making a guassian kernal wtih specified mean and std dev"
+
+    kernal = gaussian(x, mu, sigma)
+    kernal_normalized = kernal/np.sum(kernal) # area = 1
+
+    return kernal_normalized
+
+def smooth_trial(binarized_trial, kernal):
+    """
+    Function that convolved spikes from a single trial with a kernal. Because the sigma is large,
+    it will drop any signal that is 0 and replace with nan's because this is where masking occured
+    !!NOTE!! this should be updated for new animals after W122
+    """
+
+    smoothed = np.convolve(binarized_trial, kernal, mode = 'same')
+    smoothed_remove_masking = np.where(smoothed == 0, np.nan, smoothed)
+    return smoothed_remove_masking
+
+def smooth_trials(binarized_trials, kernal, summary):
+
+    """
+    Function for smoothing event cented trials (for the whole session, or a condiiton)
+    given a kernal.
+
+    params
+    ------
+    binarized_trials : list, output from binarize_event()
+    kernal : arr, kernal to convole with
+    summary : bool, whether to calculate and return summary information for trials
+
+    returns
+    -------
+    smoothed_mean : arr, mean of smooothed trials
+    smoothed_sem : arr, standard error of mean of smoothed trials
+    smoothed_trial : arr, smoothed (aka convolved) output for each trial
+    """
+
+    smoothed_trials = []
+
+    for trial in binarized_trials:
+        smoothed_trials.append(smooth_trial(trial, kernal))
+
+    if summary:
+        smoothed_mean = np.nanmean(np.array(smoothed_trials), axis=0)
+        smoothed_sem = stats.sem(np.array(smoothed_trials), axis=0, nan_policy='omit')
+
+        return smoothed_mean, smoothed_sem, smoothed_trials
+
+    else:
+        return np.array(smoothed_trials)
+
+
+"!!!get_spike_counts not adopted to new trial/event aligned structure!!!"
 def get_spike_counts(trial_spks_dict, bin_size, mode, trial_len='same'):
 
     """
@@ -91,6 +198,10 @@ def get_spike_counts(trial_spks_dict, bin_size, mode, trial_len='same'):
         session_spk_counts.append(trial_spk_counts)
 
     return session_spk_counts
+
+
+
+""" ITEMS BELOW USED FOR SPYKES """
 
 
 def initiate_neurons(spks_dict):
