@@ -86,8 +86,8 @@ def smooth_trial(binarized_trial, kernal):
     it will drop any signal that is 0 and replace with nan's because this is where masking occured
     !!NOTE!! this should be updated for new animals after W122
     """
-
-    smoothed = np.convolve(binarized_trial, kernal, mode = 'same')
+    # multply by 1000 to get to spks/second (as opposed to spks/ms)
+    smoothed = np.convolve(binarized_trial, kernal, mode = 'same') * 1000
     smoothed_remove_masking = np.where(smoothed == 0, np.nan, smoothed)
     return smoothed_remove_masking
 
