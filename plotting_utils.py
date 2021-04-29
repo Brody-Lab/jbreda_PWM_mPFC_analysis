@@ -66,7 +66,7 @@ def binarize_event(event_aligned_spks, window, bin_size):
 
         binarized_spks.append(binarized_trial)
 
-    return binarized_spks
+    return np.array(binarized_spks)
 
 def gaussian(x, mu, sigma):
     "Quick fx for guassian distribution"
