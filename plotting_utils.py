@@ -30,7 +30,7 @@ def binarize_event(event_aligned_spks, window, bin_size):
     ------
     event_aligned_spks : event_aligned spike times for a single neuron & event from align_neuron_to_events()
     window : window of time around event to binarize (NOTE: this is limited by the windows in simuli_align()
-    bin_size : int, binsize in ms to use for determining if there is a spike or not
+    bin_size : int, binsize in s to use for determining if there is a spike or not
 
     returns
     -------
@@ -123,83 +123,6 @@ def smooth_trials(binarized_trials, kernal, summary):
 
     else:
         return np.array(smoothed_trials)
-
-
-"!!!get_spike_counts not adopted to new trial/event aligned structure!!!"
-def get_spike_counts(trial_spks_dict, bin_size, mode, trial_len='same'):
-
-    """
-    Function that takes spike time information for a session split by trials and binarizes or counts the
-    spike information for further analyses
-
-    Inputs
-    ------
-    trial_spks_dict     : dict, created by split_spks_by_trial()
-    bin_size            : int, size of sliding bin to use in seconds
-    mode                : str, whether binirze spike counts for a bin ('binary)', or count them ('count')
-    trial_len           : str, whether to pack trials of different lenghts with 0s to make all the same
-                          length ('same') or use the ending time ('end'), default='same'
-
-    Returns
-    -------
-    session_spk_binary  : array_like, N trials X trial_len, biniarize spike train for each trial
-
-    Notes
-    -----
-    For binarizing data, a average isi is ~ 0.01 to 0.05 ms. In 1 ms bins there will still be cases of 2-3
-    spikes in a bin only being counted as 1 spike. This appears to be quite rare on the scale of 2-5 bins
-    on 25% of trials
-    """
-
-    # initialize & extract
-    session_spk_counts = []
-    spks = trial_spks_dict['trial_spks']
-
-    # iterate over spikes for each trial
-    for itrial, trial_spks in enumerate(tqdm(spks)):
-
-        # grab start time
-        t_start = trial_spks_dict['trial_times'][0][itrial]
-
-        # determine which end time to use given inputs
-        # NOTE this assumes 6s delays are included so maximum t_len = 9.9 seconds
-        if trial_len == 'same':
-            t_end = t_start + 9.9
-        elif trial_len == 'end':
-            t_end = trial_spks_dict['trial_times'][1][itrial]
-        else:
-            print('This is not a valid_trial length type')
-
-        # initialize bin structure to include all bins form [0 to bin_size]
-        half_bin = bin_size / 2
-        bin_centers = np.arange(t_start + half_bin, t_end, bin_size)
-        n_bins = len(bin_centers)
-
-        # updated for each trial
-        trial_spk_counts = np.zeros((n_bins))
-
-        for ibin in range(n_bins):
-            # for each of the spikes in the ith trial, do any fit in the ith bin?
-            if mode == 'binary':
-                spike_in_ibin = np.logical_and(spks[itrial] >= (bin_centers[ibin] - half_bin),
-                                               spks[itrial] <= (bin_centers[ibin] + half_bin))
-
-                # if there is a spike in the bin, report it
-                if np.sum(spike_in_ibin) > 0:
-                    trial_spk_counts[ibin] = 1
-
-            elif mode == 'count':
-                # for each of the spikes in the ith trial, how many fit into the ith bin?
-                n_spike_in_bin = np.sum(np.logical_and(spks[itrial] >= (bin_centers[ibin] - half_bin),
-                                                       spks[itrial] <= (bin_centers[ibin] + half_bin)))
-
-                trial_spk_counts[ibin] = n_spike_in_bin
-
-        session_spk_counts.append(trial_spk_counts)
-
-    return session_spk_counts
-
-
 
 """ ITEMS BELOW USED FOR SPYKES """
 
