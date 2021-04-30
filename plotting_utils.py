@@ -19,7 +19,72 @@ from scipy import stats
 from spykes.spykes.plot.neurovis import NeuroVis
 
 
-"PSTHs"
+"PSTHs- Gaussain"
+
+def PSTH_gaussain(event_aligned_spks, event_aligned_windows, event, df,
+                  conditions=None, bin_size=0.001, mu=0, sigma=0.150):
+
+    """
+    Function for computing PSTH information w/ guassain smoothing
+
+    params:
+    -------
+    event_aligned_spks    : dict, event_aligned spike times for a single neuron & event from align_neuron_to_events()
+    event_aligned_windows : dict, windows of time used in align_neuron_to_events()
+    event                 : str, event to align to (this is a key for the two alignment dictionaries)
+    df                    : df, behavior information (usually filtered) to use for determining condition trials
+    conditions            : str, defualt = None, name of column in df to split by
+    bin_size              : int, default = 0.001, time in s used to binarize spike trian
+    mu                    : int, default = 0, mean of guassian kernal in seconds
+    sigma                 : int, faults = 0.150, std of guassain kernal in seconds
+
+    returns
+    -------
+    psth                  : dict, containing smoothed data for a single neuron and event to be used to use in
+                            plotting or further analysis
+
+    """
+
+    ## biniarize spike train
+    binarized_spks = binarize_event(event_aligned_spks[event], event_aligned_windows[event],
+                                    bin_size=bin_size)
+
+    ## make kernal
+    x = np.linspace(-1.0, 1.0, 150)
+    kernal = make_gaussian_kernal(x, mu, sigma)
+    plt.plot(kernal)
+
+    ## get a set of binary indicators to split by conditions (if present)
+    trials = dict()
+
+    if conditions:
+        for cond_id in np.sort(df[conditions].unique()):
+
+            trials[cond_id] = np.where((df[conditions] == cond_id).values)[0]
+    else:
+        trials['all'] = (np.ones(len(df), dtype=int))
+
+    ## iterate over each condition, smooth with kernal and save to psth dict
+    psth = {'event' : event, 'conditions' : conditions, 'n': [], 'time' : [], 'data' : {}, 'mean' : {}, 'sem' :{}}
+
+    for cond_id, idxs in trials.items():
+
+        # grab the trials for each condition
+        selected_trials = binarized_spks[idxs]
+
+        # convolve
+        mean, sem, data = smooth_trials(selected_trials, kernal, summary=True)
+
+        # append
+        psth['n'].append(len(selected_trials))
+        psth['data'][cond_id] = data
+        psth['mean'][cond_id] = mean
+        psth['sem'][cond_id] = sem
+        psth['time'].append(np.linspace(event_aligned_windows[event][0],
+                                    event_aligned_windows[event][1],
+                                    len(psth['mean'][cond_id])))
+
+    return psth
 
 def binarize_event(event_aligned_spks, window, bin_size):
 
@@ -123,6 +188,118 @@ def smooth_trials(binarized_trials, kernal, summary):
 
     else:
         return np.array(smoothed_trials)
+
+"PSTHs- Boxcar"
+
+def PSTH_boxcar(event_aligned_spks, event_aligned_windows, event, df,
+                  conditions=None, bin_size=0.100, masking=True):
+
+    """
+    Function for computing PSTH information w/ guassain smoothing
+
+    params:
+    -------
+    event_aligned_spks    : dict, event_aligned spike times for a single neuron & event from align_neuron_to_events()
+    event_aligned_windows : dict, windows of time used in align_neuron_to_events()
+    event                 : str, event to align to (this is a key for the two alignment dictionaries)
+    df                    : df, behavior information (usually filtered) to use for determining condition trials
+    conditions            : str, defualt = None, name of column in df to split by
+    bin_size              : int, default = 0.100, time in s to make box car
+    masking               : bool, default = True, if 0s should be set to nans due to pre-kilosort masking
+
+    returns
+    -------
+    psth                  : dict, containing summed data for a single neuron and event to be used to use in
+                            plotting or further analysis
+
+    """
+
+    ## get a set of binary indicators to split by conditions (if present)
+    trials = dict()
+
+    if conditions:
+        for cond_id in np.sort(df[conditions].unique()):
+
+            trials[cond_id] = np.where((df[conditions] == cond_id).values)[0]
+    else:
+        trials['all'] = (np.ones(len(df), dtype=int))
+
+    ## iterate over each condition, count, summarize and save to psth dict
+    psth = {'event' : event, 'conditions' : conditions, 'n': [], 'time' : [], 'data' : {}, 'mean' : {}, 'sem' :{}}
+
+    for cond_id, idxs in trials.items():
+
+        # grab the trials for each condition
+        selected_trials = np.array(event_aligned_spks[event], dtype=object)[idxs]
+
+        # count
+        counted_spks = get_spike_counts(selected_trials, event_aligned_windows[event], bin_size=bin_size)
+
+        # summarize
+        counted_spks_masked, mean, sem = summarize_spike_counts(counted_spks, masking=masking)
+
+        # append
+        psth['n'].append(len(selected_trials))
+        psth['data'][cond_id] = counted_spks_masked
+        psth['mean'][cond_id] = mean
+        psth['sem'][cond_id] = sem
+        psth['time'].append(np.linspace(event_aligned_windows[event][0],
+                                    event_aligned_windows[event][1],
+                                    len(psth['mean'][cond_id])))
+
+    return psth
+
+def get_spike_counts(event_aligned_spks, window, bin_size):
+
+    """
+    Function for taking event centered spike times and counting them using sliding boxcar
+
+    params
+    ------
+    event_aligned_spks : event_aligned spike times for a single neuron & event from align_neuron_to_events()
+    window : window of time around event to analyze (NOTE: this is limited by the windows in simuli_align()
+    bin_size : int, binsize in s to use for boxcar
+
+    returns
+    -------
+    counted_spks : list, (1 x n_trials) with spike counts for a single event and cell given bin_size
+
+    """
+    counted_spks = []
+    half_bin = bin_size / 2
+    bin_centers = np.arange((window[0] * 0.001) + half_bin, (window[1] * 0.001), bin_size)
+    n_bins = len(bin_centers)
+
+    # iterate over each trial for an event
+    for trial_spks in range(len(event_aligned_spks)):
+
+        counted_trial = np.zeros((n_bins))
+
+         # iterate over each time bin in a trial
+        for ibin in range(n_bins):
+
+            # for each of the spikes in the ith trial, how many fit into the ith bin?
+            n_spikes_in_bin = np.logical_and(event_aligned_spks[trial_spks] >= (bin_centers[ibin] - half_bin),
+                                            event_aligned_spks[trial_spks] <= (bin_centers[ibin] + half_bin))
+
+            counted_trial[ibin] = np.sum(n_spikes_in_bin)
+
+        counted_spks.append(counted_trial)
+
+    return np.array(counted_spks)
+
+def summarize_spike_counts(counted_spks, masking=True):
+    "Quick fx for getting summary information and nan-packing of spike count data"
+
+    if masking:
+
+        # replace 0s with nans
+        counted_spks = np.where(counted_spks == 0, np.nan, counted_spks)
+
+    counted_mean = np.nanmean(counted_spks, axis = 0)
+    counted_sem = stats.sem(counted_spks, axis=0, nan_policy='omit')
+
+    return counted_spks, counted_mean, counted_sem
 
 """ ITEMS BELOW USED FOR SPYKES """
 
