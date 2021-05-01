@@ -50,19 +50,17 @@ def PSTH_gaussain(event_aligned_spks, event_aligned_windows, event, df,
                                     bin_size=bin_size)
 
     ## make kernal
-    x = np.linspace(-1.0, 1.0, 150)
-    kernal = make_gaussian_kernal(x, mu, sigma)
-    plt.plot(kernal)
+    x = np.linspace(-5,5, 350)
+    kernal = make_gaussian_kernal(x, mu=mu, sigma=sigma)
 
     ## get a set of binary indicators to split by conditions (if present)
     trials = dict()
-
     if conditions:
         for cond_id in np.sort(df[conditions].unique()):
 
             trials[cond_id] = np.where((df[conditions] == cond_id).values)[0]
     else:
-        trials['all'] = (np.ones(len(df), dtype=int))
+        trials['all'] = np.where(np.ones(len(df)))[0]
 
     ## iterate over each condition, smooth with kernal and save to psth dict
     psth = {'event' : event, 'conditions' : conditions, 'n': [], 'time' : [], 'data' : {}, 'mean' : {}, 'sem' :{}}
@@ -114,7 +112,7 @@ def binarize_event(event_aligned_spks, window, bin_size):
     n_bins = len(bin_centers)
 
     # iterate over each trial for an event
-    for trial_spks in range(len(event_aligned_spks)):
+    for itrial in range(len(event_aligned_spks)):
 
         binarized_trial = np.zeros((n_bins))
 
@@ -122,8 +120,8 @@ def binarize_event(event_aligned_spks, window, bin_size):
         for ibin in range(n_bins):
 
             # for each of the spikes in the ith trial, do any fit in the ith bin?
-            spk_in_ibin = np.logical_and(event_aligned_spks[trial_spks] >= (bin_centers[ibin] - half_bin),
-                                        event_aligned_spks[trial_spks] <= (bin_centers[ibin] + half_bin))
+            spk_in_ibin = np.logical_and(event_aligned_spks[itrial] >= (bin_centers[ibin] - half_bin),
+                                        event_aligned_spks[itrial] <= (bin_centers[ibin] + half_bin))
 
             # if yes, report it
             if np.sum(spk_in_ibin) > 0:
@@ -214,6 +212,8 @@ def PSTH_boxcar(event_aligned_spks, event_aligned_windows, event, df,
 
     """
 
+    assert len(df) == len(event_aligned_spks[event]), "Trial and spike lists of different length"
+
     ## get a set of binary indicators to split by conditions (if present)
     trials = dict()
 
@@ -222,27 +222,31 @@ def PSTH_boxcar(event_aligned_spks, event_aligned_windows, event, df,
 
             trials[cond_id] = np.where((df[conditions] == cond_id).values)[0]
     else:
-        trials['all'] = (np.ones(len(df), dtype=int))
+        trials['all'] = trials['all'] = np.where(np.ones(len(df)))[0]
 
     ## iterate over each condition, count, summarize and save to psth dict
     psth = {'event' : event, 'conditions' : conditions, 'n': [], 'time' : [], 'data' : {}, 'mean' : {}, 'sem' :{}}
 
     for cond_id, idxs in trials.items():
 
+        print(cond_id, idxs)
+
         # grab the trials for each condition
         selected_trials = np.array(event_aligned_spks[event], dtype=object)[idxs]
+        # print(selected_trials)
+
 
         # count
         counted_spks = get_spike_counts(selected_trials, event_aligned_windows[event], bin_size=bin_size)
-
+        print('counted spks:', counted_spks)
         # summarize
         counted_spks_masked, mean, sem = summarize_spike_counts(counted_spks, masking=masking)
 
-        # append
+        # append (divide by bin_size to get in Hz)
         psth['n'].append(len(selected_trials))
-        psth['data'][cond_id] = counted_spks_masked
-        psth['mean'][cond_id] = mean
-        psth['sem'][cond_id] = sem
+        psth['data'][cond_id] = counted_spks_masked /  bin_size
+        psth['mean'][cond_id] = mean / bin_size
+        psth['sem'][cond_id] = sem / bin_size
         psth['time'].append(np.linspace(event_aligned_windows[event][0],
                                     event_aligned_windows[event][1],
                                     len(psth['mean'][cond_id])))
@@ -271,7 +275,7 @@ def get_spike_counts(event_aligned_spks, window, bin_size):
     n_bins = len(bin_centers)
 
     # iterate over each trial for an event
-    for trial_spks in range(len(event_aligned_spks)):
+    for itrial in range(len(event_aligned_spks)):
 
         counted_trial = np.zeros((n_bins))
 
@@ -279,8 +283,8 @@ def get_spike_counts(event_aligned_spks, window, bin_size):
         for ibin in range(n_bins):
 
             # for each of the spikes in the ith trial, how many fit into the ith bin?
-            n_spikes_in_bin = np.logical_and(event_aligned_spks[trial_spks] >= (bin_centers[ibin] - half_bin),
-                                            event_aligned_spks[trial_spks] <= (bin_centers[ibin] + half_bin))
+            n_spikes_in_bin = np.logical_and(event_aligned_spks[itrial] >= (bin_centers[ibin] - half_bin),
+                                            event_aligned_spks[itrial] <= (bin_centers[ibin] + half_bin))
 
             counted_trial[ibin] = np.sum(n_spikes_in_bin)
 
