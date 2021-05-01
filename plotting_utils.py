@@ -21,8 +21,8 @@ from spykes.spykes.plot.neurovis import NeuroVis
 
 "PSTHs- Gaussain"
 
-def PSTH_gaussain(event_aligned_spks, event_aligned_windows, event, df,
-                  conditions=None, bin_size=0.001, mu=0, sigma=0.150):
+def PSTH_gaussain(event_aligned_spks, event_aligned_windows, event, df, conditions=None,
+                  bin_size=0.001, x=np.linspace(-1,1,150), mu=0, sigma=0.150):
 
     """
     Function for computing PSTH information w/ guassain smoothing
@@ -33,10 +33,11 @@ def PSTH_gaussain(event_aligned_spks, event_aligned_windows, event, df,
     event_aligned_windows : dict, windows of time used in align_neuron_to_events()
     event                 : str, event to align to (this is a key for the two alignment dictionaries)
     df                    : df, behavior information (usually filtered) to use for determining condition trials
-    conditions            : str, defualt = None, name of column in df to split by
-    bin_size              : int, default = 0.001, time in s used to binarize spike trian
-    mu                    : int, default = 0, mean of guassian kernal in seconds
-    sigma                 : int, faults = 0.150, std of guassain kernal in seconds
+    conditions            : str, optional- defualt = None, name of column in df to split by
+    bin_size              : int, optional- default = 0.001, time in s used to binarize spike trian
+    x                     : arr, optional- values used to make the kernal w/ mu and sigma
+    mu                    : int, optional- default = 0, mean of guassian kernal in seconds
+    sigma                 : int, optional- default = 0.150, std of guassain kernal in seconds
 
     returns
     -------
@@ -50,8 +51,7 @@ def PSTH_gaussain(event_aligned_spks, event_aligned_windows, event, df,
                                     bin_size=bin_size)
 
     ## make kernal
-    x = np.linspace(-5,5, 350)
-    kernal = make_gaussian_kernal(x, mu=mu, sigma=sigma)
+    kernal = make_gaussian_kernal(x=x, mu=mu, sigma=sigma)
 
     ## get a set of binary indicators to split by conditions (if present)
     trials = dict()
@@ -229,16 +229,12 @@ def PSTH_boxcar(event_aligned_spks, event_aligned_windows, event, df,
 
     for cond_id, idxs in trials.items():
 
-        print(cond_id, idxs)
-
         # grab the trials for each condition
         selected_trials = np.array(event_aligned_spks[event], dtype=object)[idxs]
-        # print(selected_trials)
-
 
         # count
         counted_spks = get_spike_counts(selected_trials, event_aligned_windows[event], bin_size=bin_size)
-        print('counted spks:', counted_spks)
+
         # summarize
         counted_spks_masked, mean, sem = summarize_spike_counts(counted_spks, masking=masking)
 
@@ -304,6 +300,76 @@ def summarize_spike_counts(counted_spks, masking=True):
     counted_sem = stats.sem(counted_spks, axis=0, nan_policy='omit')
 
     return counted_spks, counted_mean, counted_sem
+
+def plot_psth(psth, axis=None, title=None, xlim=None, ylim=None,
+              legend=False, stimulus_bar=None):
+
+    """
+    Function for plotting PSTHs
+
+    params:
+    -------
+    psth  : dict, output from PSTH_boxcar() or PSTH_gaussain()
+    axis  : optional- default = gca(), which axis to plot to
+    title : str, optional- default = None, title of plot
+    xlim  : arr, optional- default = None, x limits of plot
+    ylim  : arr, optional- default = None, y limits of plot
+    legens : bool, optional- default = False, to turn legend on
+    stimulus_bar : str, optional- default = None, 'sound on' or 'sound off'
+
+    returns:
+    --------
+    none, only plots
+    """
+
+    # set axes
+    if axis:
+        ax = axis
+    else:
+        ax = plt.gca()
+
+    # pull of of dictionary for ease
+    mean = psth['mean']
+    sem = psth['sem']
+    time = psth['time'][0] # all times are the same, just grab one
+
+    # plot by condition
+    for cond_id in mean.keys():
+
+        ax.plot(time, mean[cond_id], label = cond_id)
+
+        ax.fill_between(time, mean[cond_id] - sem[cond_id],
+                       mean[cond_id] + sem[cond_id], alpha = 0.2, label = cond_id)
+
+    ax.axvspan(0,0.0001, color = 'black')
+
+    # aesthetics
+    ax.set(xlabel = 'Time (ms)', ylabel = 'Firing Rate (Hz)')
+
+    if title:
+        ax.set_title(title)
+
+    if xlim:
+        ax.set_xlim(xlim)
+
+    if ylim:
+        ax.set_ylim(ylim)
+
+    else:
+        scale = 0.01
+        y_min = (1 - scale) * np.nanmin([np.min(mean[cond_id]) for cond_id in mean.keys()])
+        y_max = (1 - scale) * np.nanmax([np.max(mean[cond_id]) for cond_id in mean.keys()])
+
+    if legend:
+        plt.legend(frameon=False)
+
+    if stimulus_bar == 'sound on':
+        ax.axvspan(0, 400, alpha=0.2, color='grey')
+
+    elif stimulus_bar == 'sound off':
+        ax.axvspan(-400, 0, alpha =0.2, color='grey')
+
+    sns.despine()
 
 """ ITEMS BELOW USED FOR SPYKES """
 
