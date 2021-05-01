@@ -15,6 +15,7 @@ import pandas as pd
 import seaborn as sns
 import scipy.io as spio
 from scipy import stats
+from scipy.ndimage import gaussian_filter1d
 # stored one repo up in my fork of Spykes
 from spykes.spykes.plot.neurovis import NeuroVis
 
@@ -150,7 +151,9 @@ def smooth_trial(binarized_trial, kernal):
     !!NOTE!! this should be updated for new animals after W122
     """
     # multply by 1000 to get to spks/second (as opposed to spks/ms)
-    smoothed = np.convolve(binarized_trial, kernal, mode = 'same') * 1000
+    # smoothed = np.convolve(binarized_trial, kernal, mode = 'same') * 1000
+    smoothed = gaussian_filter1d(binarized_trial, 10)
+
     smoothed_remove_masking = np.where(smoothed == 0, np.nan, smoothed)
     return smoothed_remove_masking
 
