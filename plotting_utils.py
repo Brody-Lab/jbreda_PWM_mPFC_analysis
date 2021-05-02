@@ -153,8 +153,8 @@ def smooth_trial(binarized_trial, kernal):
     # multply by 1000 to get to spks/second (as opposed to spks/ms)
     # smoothed = np.convolve(binarized_trial, kernal, mode = 'same') * 1000
     smoothed = gaussian_filter1d(binarized_trial, 150, mode='wrap') * 1000
-
     smoothed_remove_masking = np.where(smoothed == 0, np.nan, smoothed)
+    
     return smoothed_remove_masking
 
 def smooth_trials(binarized_trials, kernal, summary):

@@ -506,7 +506,7 @@ def selective_make_spks_dict(spks_info, sess_neurons):
 
 "Event centering of spike times for plotting"
 
-def event_align_session(spks_dict, beh_df, sess_path, overwrite=False, delay_mode=True):
+def event_align_session(spks_dict, beh_df, sess_path, overwrite=False, delay_mode=True, file_name=None):
     """ Function for alining spike times from each neuron in a session to relevant events
     and saving out as a dictionary
 
@@ -517,6 +517,7 @@ def event_align_session(spks_dict, beh_df, sess_path, overwrite=False, delay_mod
     sess_path  : string, path to session folder in bucket
     overwrite  : bool, whether or not to overwrite previous dictionary, (optional, defualt = False)
     delay_mode : bool, whether or not to aligned to variable delay peroid (optional, default = True)
+    file_name  : str,optional- defualt = 'event_aligned_spks.pkl' what to save out .pkl as
 
     Returns:
     --------
@@ -524,8 +525,12 @@ def event_align_session(spks_dict, beh_df, sess_path, overwrite=False, delay_mod
     """
 
     # check to see if already there, load in if so
-    file_name = 'event_aligned_spks.pkl'
-    if os.path.exists(os.path.join(sess_path, file_name)) and overwrite==False:
+    if file_name:
+        fname = file_name
+    else:
+        fname = 'event_aligned_spks.pkl'
+
+    if os.path.exists(os.path.join(sess_path, fname)) and overwrite==False:
 
         print('loading from file...')
 
@@ -664,6 +669,8 @@ def stimuli_align(beh_df, neuron_spks):
 
 
     stimuli_dict = {}
+    # rest idx for iteration
+    beh_df = beh_df.reset_index()
 
     for event,name,window in zip(df_event,names,windows):
 
@@ -671,7 +678,7 @@ def stimuli_align(beh_df, neuron_spks):
         stimuli_dict[name] = []
 
         for itrial, row in beh_df.iterrows():
-
+            
             trial_spks = neuron_spks['spks'][itrial]
 
             # grab alignment time
@@ -712,8 +719,8 @@ def delay_align(beh_df, neuron_spks):
     delay_windows = [[-150, 2150],[-200, 2400], [-150, 4150], [-200, 4400]]
     delay_names = ['delay2s', 'trial2s', 'delay4s', 'trial4s']
 
-
     L =[[],[],[],[]]
+    beh_df = beh_df.reset_index()
 
     # iterate over each trial
     for itrial, row in beh_df.iterrows():
