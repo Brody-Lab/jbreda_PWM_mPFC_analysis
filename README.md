@@ -63,6 +63,7 @@ pip install seaborn
 pip install jupyter
 pip3 install jedi==0.17.2 # tab complete issue
 pip install tqdm
+pip install statsmodels
 
 --- have but might not need ---
 pip install spikeinterface (usually uses python=3.6)
