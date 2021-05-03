@@ -17,6 +17,7 @@ import scipy.io as spio
 from scipy import stats
 from scipy.ndimage import gaussian_filter1d
 import statsmodels.api as sm
+import warnings
 # stored one repo up in my fork of Spykes
 from spykes.spykes.plot.neurovis import NeuroVis
 
@@ -393,7 +394,9 @@ def fr_by_loudness_df(psth, neuron_id):
             conds.append(float(key.replace('*','')))
 
             # get mean for each trial during only the delay period
-            mean_fr_by_cond.append(np.nanmean(trial_psth[150:-150]))
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+                mean_fr_by_cond.append(np.nanmean(trial_psth[150:-150]))
 
     ids = [neuron_id] * len(conds)
 
@@ -444,8 +447,8 @@ def simple_regplot( x, y, n_std=2, n_pts=100, ax=None, scatter_kws=None, line_kw
     sns.despine()
 
     return fit_results
-
-def loudness_regression(df, ax=None):
+#yt
+def regress_loudness_and_plot(df, ax=None):
 
     """
     Simple linear regression on loudness by firing rate with visualization
@@ -483,3 +486,63 @@ def loudness_regression(df, ax=None):
                             'rsqaured' : fit.rsquared,
                             'pvalue' : fit.pvalues[1]}, index=[0])
     return stats_df
+
+    def analyze_and_plot_loudness(sess_name, sess_aligned, aligned_windows, event, df,
+                              fig_save_path, sess_path):
+
+    # initialize lists for saving out
+    trials_loudness = []
+    summary_stats = []
+
+    for neuron in range(len(sess_aligned)):
+
+        neuron_id = sess_name + '_N' + str(neuron)
+
+        # calculate psth via gaussian and boxcar
+        psth_g = PSTH_gaussain(sess_aligned[neuron], align_windows, event, df,
+                               conditions='first_sound', sigma=150)
+        psth_b = PSTH_boxcar(sess_aligned[neuron], align_windows, event, df,
+                             conditions='first_sound', bin_size=0.150)
+
+        ## PSTHs
+        fig, ax = plt.subplots(2,1, figsize = (15,12))
+        plot_psth(psth_g, ax[0], legend=True, title=neuron_id)
+        plot_psth(psth_b, ax[1])
+
+        # save out
+        fig_name = f"{neuron_id}_{event}_psth"
+        plt.tight_layout()
+        plt.savefig(os.path.join(fig_save_path, fig_name))
+        plt.close("all")
+
+        # FIRING RATE ~ LOUDNESS
+        # extract data
+        loudness_df = fr_by_loudness_df(psth_g, neuron_id)
+        trials_loudness.append(loudness_df)
+
+        # plot & regress
+        fig2,ax2 = plt.subplots(1,1, figsize=(8,5))
+        regression_stats = regress_loudness_and_plot(loudness_df, ax=ax2)
+        summary_stats.append(regression_stats)
+
+        # save out
+        fig_name = f"{neuron_id}_{event}_loudness"
+        plt.tight_layout()
+        plt.savefig(os.path.join(fig_save_path, fig_name))
+        plt.close("all")
+
+
+    # concat & save out data frames used for regression
+    stats_df = pd.concat(summary_stats)
+    stats_df.reset_index().to_csv(os.path.join(sess_path, 'fr_by_loudness.csv'))
+
+    loudness_df = pd.concat(trials_loudness)
+    loudness_df.reset_index().to_csv(os.path.join(sess_path, 'fr_by_loudness_regression.csv'))
+
+def run_delay_analysis_for_session(sess_name, sess_aligned, aligned_windows, events, dfs,
+                       fig_save_path, sess_path):
+
+    for event, df in zip(events, dfs):
+
+        analyze_and_plot_loudness(sess_name, sess_aligned, align_windows,
+                                  event, df, fig_save_path, sess_path)
