@@ -16,14 +16,17 @@ import seaborn as sns
 import scipy.io as spio
 from scipy import stats
 from scipy.ndimage import gaussian_filter1d
+import statsmodels.api as sm
 # stored one repo up in my fork of Spykes
 from spykes.spykes.plot.neurovis import NeuroVis
+
+delay_colors =['#e1e1e1','#e1e1e1', '#929292', '#4b4b4b', '#1e1e1e']
 
 
 "PSTHs- Gaussain"
 
 def PSTH_gaussain(event_aligned_spks, event_aligned_windows, event, df, conditions=None,
-                  bin_size=0.001, x=np.linspace(-1,1,150), mu=0, sigma=0.150):
+                  bin_size=0.001, sigma=150):
 
     """
     Function for computing PSTH information w/ guassain smoothing
@@ -51,8 +54,6 @@ def PSTH_gaussain(event_aligned_spks, event_aligned_windows, event, df, conditio
     binarized_spks = binarize_event(event_aligned_spks[event], event_aligned_windows[event],
                                     bin_size=bin_size)
 
-    ## make kernal
-    kernal = make_gaussian_kernal(x=x, mu=mu, sigma=sigma)
 
     ## get a set of binary indicators to split by conditions (if present)
     trials = dict()
@@ -72,7 +73,7 @@ def PSTH_gaussain(event_aligned_spks, event_aligned_windows, event, df, conditio
         selected_trials = binarized_spks[idxs]
 
         # convolve
-        mean, sem, data = smooth_trials(selected_trials, kernal, summary=True)
+        mean, sem, data = smooth_trials(selected_trials, sigma=sigma, summary=True)
 
         # append
         psth['n'].append(len(selected_trials))
@@ -132,32 +133,21 @@ def binarize_event(event_aligned_spks, window, bin_size):
 
     return np.array(binarized_spks)
 
-def gaussian(x, mu, sigma):
-    "Quick fx for guassian distribution"
-    return 1 / (sigma * np.sqrt(2 * np.pi)) * np.exp(-1/2 * ((x - mu)/sigma)**2)
-
-def make_gaussian_kernal(x, mu, sigma):
-    "Qucik function for making a guassian kernal wtih specified mean and std dev"
-
-    kernal = gaussian(x, mu, sigma)
-    kernal_normalized = kernal/np.sum(kernal) # area = 1
-
-    return kernal_normalized
-
-def smooth_trial(binarized_trial, kernal):
+def smooth_trial(binarized_trial, sigma):
     """
     Function that convolved spikes from a single trial with a kernal. Because the sigma is large,
     it will drop any signal that is 0 and replace with nan's because this is where masking occured
     !!NOTE!! this should be updated for new animals after W122
+
+    sigma : std deviation of gaussian in ms
     """
     # multply by 1000 to get to spks/second (as opposed to spks/ms)
-    # smoothed = np.convolve(binarized_trial, kernal, mode = 'same') * 1000
-    smoothed = gaussian_filter1d(binarized_trial, 150, mode='wrap') * 1000
+    smoothed = gaussian_filter1d(binarized_trial, sigma, mode='wrap') * 1000
     smoothed_remove_masking = np.where(smoothed == 0, np.nan, smoothed)
-    
+
     return smoothed_remove_masking
 
-def smooth_trials(binarized_trials, kernal, summary):
+def smooth_trials(binarized_trials, sigma, summary):
 
     """
     Function for smoothing event cented trials (for the whole session, or a condiiton)
@@ -179,7 +169,7 @@ def smooth_trials(binarized_trials, kernal, summary):
     smoothed_trials = []
 
     for trial in binarized_trials:
-        smoothed_trials.append(smooth_trial(trial, kernal))
+        smoothed_trials.append(smooth_trial(trial, sigma))
 
     if summary:
         smoothed_mean = np.nanmean(np.array(smoothed_trials), axis=0)
@@ -337,12 +327,14 @@ def plot_psth(psth, axis=None, title=None, xlim=None, ylim=None,
     time = psth['time'][0] # all times are the same, just grab one
 
     # plot by condition
-    for cond_id in mean.keys():
+    for idx, cond_id in enumerate(mean.keys()):
 
-        ax.plot(time, mean[cond_id], label = cond_id)
+        ax.plot(time, mean[cond_id], color=delay_colors[idx])
+
 
         ax.fill_between(time, mean[cond_id] - sem[cond_id],
-                       mean[cond_id] + sem[cond_id], alpha = 0.2, label = cond_id)
+                       mean[cond_id] + sem[cond_id], alpha = 0.2,
+                       color=delay_colors[idx], label=cond_id)
 
     ax.axvspan(0,0.0001, color = 'black')
 
@@ -364,7 +356,7 @@ def plot_psth(psth, axis=None, title=None, xlim=None, ylim=None,
         y_max = (1 - scale) * np.nanmax([np.max(mean[cond_id]) for cond_id in mean.keys()])
 
     if legend:
-        plt.legend(frameon=False)
+        ax.legend(frameon=False, bbox_to_anchor=(1, 1))
 
     if stimulus_bar == 'sound on':
         ax.axvspan(0, 400, alpha=0.2, color='grey')
@@ -374,118 +366,120 @@ def plot_psth(psth, axis=None, title=None, xlim=None, ylim=None,
 
     sns.despine()
 
-""" ITEMS BELOW USED FOR SPYKES """
+def fr_by_loudness_df(psth, neuron_id):
 
-
-def initiate_neurons(spks_dict):
     """
-    This function takes spks_dict along with session data and unpacks spike times
-    in finite state machine/behavior time & turns into NeuroVis object.
+    Create df with average firing rate information by first sound loudness for
+     further plotting/analysis
 
-    inputs
-    ------
-    spks_dict : dict, with spikes .mat structures extracted
-    sess_data : str, used for naming the objects
+    params:
+    -------
+    psth      : dict, output from psth_gaussain() or psth_boxcar() with firing rate
+                information
+    neuron_id : str, session data and neuron idx for labeling
 
     returns
     -------
-    neuron_list : list, with each item being a NeuroVis object pertaining to a
-                  neuron in the session
+    df        : df, n trials long with first sound loduness and average firing
+                rate during delay period"""
+
+    conds = []
+    mean_fr_by_cond = []
+
+    for key in psth['data'].keys():
+        for trial_psth in psth['data'][key]:
+
+            # update loudness values
+            conds.append(float(key.replace('*','')))
+
+            # get mean for each trial during only the delay period
+            mean_fr_by_cond.append(np.nanmean(trial_psth[150:-150]))
+
+    ids = [neuron_id] * len(conds)
+
+    df = pd.DataFrame({'firing_rate' : mean_fr_by_cond, 'condition' : conds, 'neuron_id' : ids})
+
+    return df
+
+def simple_regplot( x, y, n_std=2, n_pts=100, ax=None, scatter_kws=None, line_kws=None,
+    ci_kws=None, title=None, xlabel=None, ylabel=None):
+
+    """ Draw a regression line with error interval & save output from stats model.
+    Modified from :https://stackoverflow.com/questions/22852244/how-to-get-the-
+    numerical-fitting-results-when-plotting-a-regression-in-seaborn """
+
+    ax = plt.gca() if ax is None else ax
+
+    # calculate best-fit line and interval
+    x_fit = sm.add_constant(x)
+    fit_results = sm.OLS(y, x_fit, missing='drop').fit()
+
+    eval_x = sm.add_constant(np.linspace(np.min(x), np.max(x), n_pts))
+    pred = fit_results.get_prediction(eval_x)
+
+    # draw the fit line and error interval
+    ci_kws = {} if ci_kws is None else ci_kws
+    ax.fill_between(
+        eval_x[:, 1],
+        pred.predicted_mean - n_std * pred.se_mean,
+        pred.predicted_mean + n_std * pred.se_mean,
+        alpha=0.5,
+        **ci_kws,
+    )
+    line_kws = {} if line_kws is None else line_kws
+    h = ax.plot(eval_x[:, 1], pred.predicted_mean, **line_kws)
+
+    # draw the scatterplot
+    scatter_kws = {} if scatter_kws is None else scatter_kws
+    ax.scatter(x, y, color=h[0].get_color(), **scatter_kws)
+
+    # add information
+    if title:
+        ax.set_title(title)
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    if ylabel:
+        ax.set_ylabel(ylabel)
+
+    sns.despine()
+
+    return fit_results
+
+def loudness_regression(df, ax=None):
+
+    """
+    Simple linear regression on loudness by firing rate with visualization
+
+    params
+    ------
+    df : df, dataframe for a neuron created by fr_by_loudness_df()
+
+    returns
+    -------
+    stats_df : df, r^2 and p-value output for fr ~ condition regression
+
+    plots
+    -----
+    firing rate by condition performed on all trials, mean denoted in black
     """
 
-    spk_in_fsm_time = spks_dict["spk_times"] # fsm = behavior time
-    sess_date = spks_dict['date']
-    neuron_list = []
-
-    for neuron in range(len(spk_in_fsm_time)):
-        spk_times = spk_in_fsm_time[neuron]
-
-        # instantiate neuron
-        neuron = NeuroVis(spk_times, name = '{} {}'.format(neuron, sess_date))
-        neuron_list.append(neuron)
-
-    return neuron_list
-
-"get_raster for all neurons and assigned events"
+    neuron_id = df['neuron_id'][0]
+    ax = plt.gca() if ax is None else ax
 
 
-def get_neuron_rasters(neurons, events, windows, bndl_dfs, df_names, conditions=None, binsize = 50):
-    """
-    This function can be used to get rasters for multiple neurons across multiple events
-    with specific time windows for each event
+    fit = simple_regplot(df['condition'], df['firing_rate'], ax=ax, title=neuron_id,
+                         ci_kws={'color':'grey'}, line_kws={'color':'grey'},
+                         scatter_kws={'alpha':0.5}, xlabel='Loudness (dB)',
+                         ylabel='Firing Rate (Hz)')
 
-    inputs:
-    -------
-    neurons   : NeuroVis object, N neurons long
-    events    : list, event name in strings from your behavior df you want to align to
-    windows   : list, time window in ms to grab for each event
-    bndl_dfs  : dict, containing df for each bndl that has a mask created by
-                make_unmasked_dfs()
-    df_names  : list, Ncells long containing dict keys to access df for each
-                cell  created by make_unmasked_dfs()
-    returns:
-    -------
-    neuron_rasters : list, raster dictionaries stored by [neuron][event] for plotting"""
+    # get summary info & mark black on plot for visual
+    df_summary = df.groupby(['condition'], as_index=False).mean()
+    ax.scatter(df_summary['condition'], df_summary['firing_rate'], color='black')
 
-    #initialize storage ([Neuron][Event])
-    neuron_rasters = []
+    # add in statistics & save them out
+    ax.text(0.055, df['firing_rate'].max(),f'$R^2$ = {fit.rsquared:0.2f} \n p = {fit.pvalues[1]:0.2f}')
 
-    # iterate over each neuron and event
-    for neuron in range(len(neurons)):
-        rasters = []
-
-        for event in range(len(events)):
-
-        # create raster dictionary
-            raster = neurons[neuron].get_raster(event = events[event], conditions=conditions,
-                                                df = bndl_dfs[df_names[neuron]],
-                                                window=windows[event], plot=False,
-                                                binsize=binsize)
-            rasters.append(raster)
-
-        neuron_rasters.append(rasters)
-
-    return neuron_rasters
-
-
-def get_neuron_psths(neurons, events, windows, bndl_dfs, df_names, conditions=None, binsize=50):
-    """
-    This function can be used to get psths for multiple neurons across multiple events
-    with specific time windows for each event
-
-    inputs:
-    -------
-    neurons    : NeuroVis object, N neurons long
-    events     : list, event name in strings from behavior df you want to align to
-    conditions : str, condition namefrom behavior df to split by (e.g. hit Y/N)
-    windows    : list, time window in ms to grab for each event
-    binsize    : int, binsize in ms
-    bndl_dfs  : dict, containing df for each bndl that has a mask created by
-                make_unmasked_dfs()
-    df_names  : list, Ncells long containing dict keys to access df for each
-                cell  created by make_unmasked_dfs()
-
-    returns:
-    -------
-    neuron_psths : list, psths dicts stored by [neuron][event] for plotting"""
-
-
-    #initialize storage ([Neuron][Event])
-    neuron_psths = []
-
-    # iterate over each neuron and event
-    for neuron in range(len(neurons)):
-        psths = []
-
-        for event in range(len(events)):
-
-        # create psth dictionary
-            psth = neurons[neuron].get_psth(event=events[event], df=bndl_dfs[df_names[neuron]],
-                          window=windows[event], conditions=conditions, binsize=binsize, plot=False,
-                          event_name=events[event])
-
-            psths.append(psth)
-
-        neuron_psths.append(psths)
-
-    return neuron_psths
+    stats_df = pd.DataFrame({'neuron_id' : neuron_id,
+                            'rsqaured' : fit.rsquared,
+                            'pvalue' : fit.pvalues[1]}, index=[0])
+    return stats_df
