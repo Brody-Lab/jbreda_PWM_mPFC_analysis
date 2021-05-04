@@ -234,6 +234,7 @@ def PSTH_boxcar(event_aligned_spks, event_aligned_windows, event, df,
 
         # append (divide by bin_size to get in Hz)
         psth['n'].append(len(selected_trials))
+        print(f'for {cond_id} there are {len(selected_trials)} for this session')
         psth['data'][cond_id] = counted_spks_masked /  bin_size
         psth['mean'][cond_id] = mean / bin_size
         psth['sem'][cond_id] = sem / bin_size
@@ -396,7 +397,7 @@ def fr_by_loudness_df(psth, neuron_id):
             # get mean for each trial during only the delay period
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=RuntimeWarning)
-                mean_fr_by_cond.append(np.nanmean(trial_psth[150:-150]))
+                mean_fr_by_cond.append(np.nanmean(trial_psth[300:-300]))
 
     ids = [neuron_id] * len(conds)
 
@@ -487,7 +488,7 @@ def regress_loudness_and_plot(df, ax=None):
                             'pvalue' : fit.pvalues[1]}, index=[0])
     return stats_df
 
-    def analyze_and_plot_loudness(sess_name, sess_aligned, aligned_windows, event, df,
+def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
                               fig_save_path, sess_path):
 
     # initialize lists for saving out
@@ -534,12 +535,12 @@ def regress_loudness_and_plot(df, ax=None):
 
     # concat & save out data frames used for regression
     stats_df = pd.concat(summary_stats)
-    stats_df.reset_index().to_csv(os.path.join(sess_path, 'fr_by_loudness.csv'))
+    stats_df.reset_index().to_csv(os.path.join(sess_path, f'{event}_fr_by_loudness.csv'))
 
     loudness_df = pd.concat(trials_loudness)
-    loudness_df.reset_index().to_csv(os.path.join(sess_path, 'fr_by_loudness_regression.csv'))
+    loudness_df.reset_index().to_csv(os.path.join(sess_path, f'{event}_fr_by_loudness_regression.csv'))
 
-def run_delay_analysis_for_session(sess_name, sess_aligned, aligned_windows, events, dfs,
+def run_delay_analysis_for_session(sess_name, sess_aligned, align_windows, events, dfs,
                        fig_save_path, sess_path):
 
     for event, df in zip(events, dfs):

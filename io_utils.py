@@ -663,9 +663,9 @@ def stimuli_align(beh_df, neuron_spks):
     stimuli_dict : dict with events centered to stimuli happening on all trials"""
 
     # specific events and windows
-    df_event = ['aud1_on', 'aud1_off', 'aud2_on', 'aud2_off', 'aud1_on']
-    names = ['aud1on', 'aud1off', 'aud2on', 'aud2off', 'trial_all']
-    windows = [[-400, 600], [-500, 500], [-400, 600], [-500, 500], [-100, 5000]]
+    df_event = ['aud1_on', 'aud1_off', 'aud2_on', 'aud2_off', 'aud1_on', 'aud1_off']
+    names = ['aud1on', 'aud1off', 'aud2on', 'aud2off', 'trial_all', 'delay_overlap']
+    windows = [[-400, 600], [-500, 500], [-400, 600], [-500, 500], [-100, 5000], [-300, 2300]]
 
 
     stimuli_dict = {}
@@ -678,7 +678,7 @@ def stimuli_align(beh_df, neuron_spks):
         stimuli_dict[name] = []
 
         for itrial, row in beh_df.iterrows():
-            
+
             trial_spks = neuron_spks['spks'][itrial]
 
             # grab alignment time
