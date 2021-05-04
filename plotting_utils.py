@@ -21,7 +21,7 @@ import warnings
 # stored one repo up in my fork of Spykes
 from spykes.spykes.plot.neurovis import NeuroVis
 
-delay_colors =['#e1e1e1','#e1e1e1', '#929292', '#4b4b4b', '#1e1e1e']
+delay_colors =['#1AA9D0','#2488D5', '#3669D5', '#2140A3', '#161F6F']
 
 
 "PSTHs- Gaussain"
@@ -71,9 +71,10 @@ def PSTH_gaussain(event_aligned_spks, event_aligned_windows, event, df, conditio
     for cond_id, idxs in trials.items():
 
         # grab the trials for each condition
+        # ERROR IS HERE
         selected_trials = binarized_spks[idxs]
 
-        # convolve
+        # mo
         mean, sem, data = smooth_trials(selected_trials, sigma=sigma, summary=True)
 
         # append
@@ -502,13 +503,12 @@ def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
         # calculate psth via gaussian and boxcar
         psth_g = PSTH_gaussain(sess_aligned[neuron], align_windows, event, df,
                                conditions='first_sound', sigma=150)
-        psth_b = PSTH_boxcar(sess_aligned[neuron], align_windows, event, df,
-                             conditions='first_sound', bin_size=0.150)
+        # psth_b = PSTH_boxcar(sess_aligned[neuron], align_windows, event, df,
+        #                      conditions='first_sound', bin_size=0.150)
 
         ## PSTHs
-        fig, ax = plt.subplots(2,1, figsize = (15,12))
-        plot_psth(psth_g, ax[0], legend=True, title=neuron_id)
-        plot_psth(psth_b, ax[1])
+        fig, ax = plt.subplots(1,1, figsize = (12,5))
+        plot_psth(psth_g, ax, legend=True, title=neuron_id)
 
         # save out
         fig_name = f"{neuron_id}_{event}_psth"
