@@ -144,7 +144,7 @@ def smooth_trial(binarized_trial, sigma):
     sigma : std deviation of gaussian in ms
     """
     # multply by 1000 to get to spks/second (as opposed to spks/ms)
-    smoothed = gaussian_filter1d(binarized_trial, sigma, mode='wrap') * 1000
+    smoothed = gaussian_filter1d(binarized_trial, sigma, mode='constant') * 1000
     smoothed_remove_masking = np.where(smoothed == 0, np.nan, smoothed)
 
     return smoothed_remove_masking
@@ -398,7 +398,7 @@ def fr_by_loudness_df(psth, neuron_id):
             # get mean for each trial during only the delay period
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=RuntimeWarning)
-                mean_fr_by_cond.append(np.nanmean(trial_psth[300:-300]))
+                mean_fr_by_cond.append(np.nanmean(trial_psth[600:-600]))
 
     ids = [neuron_id] * len(conds)
 

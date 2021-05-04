@@ -665,7 +665,7 @@ def stimuli_align(beh_df, neuron_spks):
     # specific events and windows
     df_event = ['aud1_on', 'aud1_off', 'aud2_on', 'aud2_off', 'aud1_on', 'aud1_off']
     names = ['aud1on', 'aud1off', 'aud2on', 'aud2off', 'trial_all', 'delay_overlap']
-    windows = [[-400, 600], [-500, 500], [-400, 600], [-500, 500], [-100, 5000], [-300, 2300]]
+    windows = [[-400, 600], [-500, 500], [-400, 600], [-500, 500], [-100, 5000], [-600, 2600]]
 
 
     stimuli_dict = {}
