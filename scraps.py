@@ -22,6 +22,44 @@ def smooth_trial(binarized_trial, kernal):
     return smoothed_remove_masking
 
 
+def run_delay_analysis_for_multiple_events(sess_name, sess_aligned, align_windows, events, dfs,
+                       fig_save_path, sess_path):
+    """
+    Wrapper function for analyze_and_plot_loudness() to allow for analysis on multiple events
+    in a session with varying trials (ie, 2 and 4s delay)
+
+    Params
+    ------
+    sess_name : str, name of the session for id in plotting
+    sess_aligned : dict, nested with dicts for each neuron giving alignment times for events
+                   in the trial output from event_align_session()
+    sess_windows : dict, with timing information from event_align_session(), for a single neuron
+                  (because it's the same for all neurons in a session)
+    events        : list, events in which you want to align to, used as a key for sess_algined,
+                   sess_windows. E.g. ['delay2s', 'delay4s']
+    dfs           : list, behavior data frames to use based on your alignment events. For example,
+                    if aligning to `delay2s`, your df should contain only 2s trials
+    fig_save_path : str, where you want to save out the psth and loudness regression figures
+
+    sess_path     : str, path to session data where analysis .csv files will be stored with
+                    regression output
+
+    plots & saves
+    -----
+    - psth for each neuron for each event, split by the loduness of the first sound
+    - OLS regression of first sound on firing rate for each neuron
+    - table with average firing rate for each trial used in regression for each neuron
+    - table with p-value and r^2 for each neuron regression
+
+    """
+
+    for event, df in zip(events, dfs):
+
+        analyze_and_plot_loudness(sess_name, sess_aligned, align_windows,
+                                  event, df, fig_save_path, sess_path)
+
+
+
 
 
 """ ITEMS BELOW USED FOR SPYKES """

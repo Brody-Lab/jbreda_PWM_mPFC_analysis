@@ -18,8 +18,6 @@ from scipy import stats
 from scipy.ndimage import gaussian_filter1d
 import statsmodels.api as sm
 import warnings
-# stored one repo up in my fork of Spykes
-from spykes.spykes.plot.neurovis import NeuroVis
 
 delay_colors =['#1AA9D0','#2488D5', '#3669D5', '#2140A3', '#161F6F']
 
@@ -482,7 +480,7 @@ def regress_loudness_and_plot(df, ax=None):
     ax.scatter(df_summary['condition'], df_summary['firing_rate'], color='black')
 
     # add in statistics & save them out
-    ax.text(0.055, df['firing_rate'].max(),f'$R^2$ = {fit.rsquared:0.2f} \n p = {fit.pvalues[1]:0.2f}')
+    ax.text(0.055, df['firing_rate'].max(),f'$R^2$ = {fit.rsquared:0.4f} \n p = {fit.pvalues[1]:0.4f}')
 
     stats_df = pd.DataFrame({'neuron_id' : neuron_id,
                             'rsqaured' : fit.rsquared,
@@ -492,6 +490,32 @@ def regress_loudness_and_plot(df, ax=None):
 def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
                               fig_save_path, sess_path):
 
+    """
+    Function that analyzes and visualizes average delay period firing rate for a
+    ingle event for all neurons in a session
+
+    Params
+    ------
+    sess_name     : str, name of the session for id in plotting
+    sess_aligned  : dict, nested with dicts for each neuron giving alignment times for events
+                    in the trial output from event_align_session()
+    sess_windows  : dict, with timing information of alignment from event_align_session() for each neuron
+    event         : str, key used for sess_aligne and sess_windows, e.g. 'delay2s' if you only want
+                    2s trials delay or 'delay_overlap' if you want all delay types first 2s
+    dfs           : behavior data frames to use based on your alignment events. For example,
+                    if aligning to `delay2s`, your df should contain only 2s trials
+    fig_save_path : str, where you want to save out the psth and loudness regression figures
+    sess_path     : str, path to session data where analysis .csv files will be stored with
+                    regression output
+
+    plots & saves
+    -------------
+    - psth for each neuron for each event, split by the loduness of the first sound
+    - OLS regression of first sound on firing rate for each neuron
+    - table with average firing rate for each trial used in regression for each neuron
+    - table with p-value and r^2 for each neuron regression
+    """
+
     # initialize lists for saving out
     trials_loudness = []
     summary_stats = []
@@ -500,8 +524,8 @@ def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
 
         neuron_id = sess_name + '_N' + str(neuron)
 
-        # calculate psth via gaussian and boxcar
-        psth_g = PSTH_gaussain(sess_aligned[neuron], align_windows, event, df,
+        # calculate psth via gaussian (boxcar option below)
+        psth_g = PSTH_gaussain(sess_aligned[neuron], align_windows[neuron], event, df,
                                conditions='first_sound', sigma=150)
         # psth_b = PSTH_boxcar(sess_aligned[neuron], align_windows, event, df,
         #                      conditions='first_sound', bin_size=0.150)
@@ -535,15 +559,7 @@ def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
 
     # concat & save out data frames used for regression
     stats_df = pd.concat(summary_stats)
-    stats_df.reset_index().to_csv(os.path.join(sess_path, f'{event}_fr_by_loudness.csv'))
+    stats_df.reset_index().to_csv(os.path.join(sess_path, f'{neuron_id}_{event}_fr_by_loudness.csv'))
 
     loudness_df = pd.concat(trials_loudness)
-    loudness_df.reset_index().to_csv(os.path.join(sess_path, f'{event}_fr_by_loudness_regression.csv'))
-
-def run_delay_analysis_for_session(sess_name, sess_aligned, align_windows, events, dfs,
-                       fig_save_path, sess_path):
-
-    for event, df in zip(events, dfs):
-
-        analyze_and_plot_loudness(sess_name, sess_aligned, align_windows,
-                                  event, df, fig_save_path, sess_path)
+    loudness_df.reset_index().to_csv(os.path.join(sess_path, f'{neuron_id}_{event}_fr_by_loudness_regression.csv'))
