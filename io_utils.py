@@ -504,6 +504,7 @@ def selective_make_spks_dict(spks_info, sess_neurons):
 
     return spks_dict
 
+
 "Event centering of spike times for plotting"
 
 def event_align_session(spks_dict, beh_df, sess_path, overwrite=False, delay_mode=True, file_name=None):
