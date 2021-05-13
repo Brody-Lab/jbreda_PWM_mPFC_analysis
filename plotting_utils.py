@@ -454,7 +454,7 @@ def simple_regplot( x, y, n_std=2, n_pts=100, ax=None, scatter_kws=None, line_kw
     sns.despine()
 
     return fit_results
-#yt
+
 def regress_loudness_and_plot(df, ax=None):
 
     """
