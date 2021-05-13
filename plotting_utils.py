@@ -18,8 +18,12 @@ from scipy import stats
 from scipy.ndimage import gaussian_filter1d
 import statsmodels.api as sm
 import warnings
-
+# blues
 delay_colors =['#1AA9D0','#2488D5', '#3669D5', '#2140A3', '#161F6F']
+
+# green to red
+
+# delay_colors=['#DAF7A6', '#FFC300', '#FF5733', '#C70039', '#900C3F']
 
 
 "PSTHs- Gaussain"
@@ -296,7 +300,7 @@ def summarize_spike_counts(counted_spks, masking=True):
     return counted_spks, counted_mean, counted_sem
 
 def plot_psth(psth, axis=None, title=None, xlim=None, ylim=None,
-              legend=False, stimulus_bar=None):
+              legend=False, stimulus_bar=None, error=True):
 
     """
     Function for plotting PSTHs
@@ -330,12 +334,12 @@ def plot_psth(psth, axis=None, title=None, xlim=None, ylim=None,
     # plot by condition
     for idx, cond_id in enumerate(mean.keys()):
 
-        ax.plot(time, mean[cond_id], color=delay_colors[idx])
+        ax.plot(time, mean[cond_id], color=delay_colors[idx], label=cond_id)
 
-
-        ax.fill_between(time, mean[cond_id] - sem[cond_id],
+        if error:
+            ax.fill_between(time, mean[cond_id] - sem[cond_id],
                        mean[cond_id] + sem[cond_id], alpha = 0.2,
-                       color=delay_colors[idx], label=cond_id)
+                       color=delay_colors[idx])
 
     ax.axvspan(0,0.0001, color = 'black')
 
@@ -357,7 +361,10 @@ def plot_psth(psth, axis=None, title=None, xlim=None, ylim=None,
         y_max = (1 - scale) * np.nanmax([np.max(mean[cond_id]) for cond_id in mean.keys()])
 
     if legend:
-        ax.legend(frameon=False, bbox_to_anchor=(1, 1))
+        ax.legend(frameon=False, bbox_to_anchor=(1.1, 0.6))
+
+
+
 
     if stimulus_bar == 'sound on':
         ax.axvspan(0, 400, alpha=0.2, color='grey')
@@ -480,7 +487,7 @@ def regress_loudness_and_plot(df, ax=None):
     ax.scatter(df_summary['condition'], df_summary['firing_rate'], color='black')
 
     # add in statistics & save them out
-    ax.text(0.055, df['firing_rate'].max(),f'$R^2$ = {fit.rsquared:0.4f} \n p = {fit.pvalues[1]:0.4f}')
+    ax.text(95, df['firing_rate'].max(),f'$R^2$ = {fit.rsquared:0.4f} \n p = {fit.pvalues[1]:0.4f}')
 
     stats_df = pd.DataFrame({'neuron_id' : neuron_id,
                             'rsqaured' : fit.rsquared,
