@@ -533,12 +533,17 @@ def event_align_session(spks_dict, beh_df, sess_path, overwrite=False, delay_mod
     else:
         fname = 'event_aligned_spks.pkl'
 
-    if os.path.exists(os.path.join(sess_path, fname)) and overwrite==False:
+    if os.path.exists(os.path.join(sess_path, fname)) and
+    os.path.exists(os.path.join(sess_path, 'session_windows.pkl')) and
+    overwrite==False:
 
         print('loading from file...')
 
         with open(os.path.join(sess_path, file_name), 'rb') as fh:
             session_aligned = pickle.load(fh)
+
+        with open(os.path.join(sess_path, 'session_windows.pkl'), 'rb') as fh:
+            session_windows = pickle.load(fh)
     else:
 
         print('no file found, running alignment for session')
@@ -560,6 +565,10 @@ def event_align_session(spks_dict, beh_df, sess_path, overwrite=False, delay_mod
         # save out
         output = open(os.path.join(sess_path, file_name), 'wb')
         pickle.dump(session_aligned, output)
+        output.close()
+
+        output = open(os.path.join(sess_path, 'session_windows.pkl'), 'wb' )
+        pickle.dump(session_windows, output)
         output.close()
 
     return session_aligned, session_windows
