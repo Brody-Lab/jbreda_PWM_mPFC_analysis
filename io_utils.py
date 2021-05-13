@@ -386,8 +386,8 @@ def find_first_sound(beh_df):
         (beh_df['pair_hist'] == 4), (beh_df['pair_hist'] == 5),
         (beh_df['pair_hist'] >= 9)
     ]
-
-    values = ['0.0027', '0.0073', '0.0197', '0.0531*', '0.0001*', 'psycho']
+    # taking behS.soundpairs, using dB from athena paper
+    values = ['68', '76', '84', '92*', '60*', 'psycho']
     beh_df['first_sound'] = np.select(conditions, values)
 
 
@@ -533,8 +533,8 @@ def event_align_session(spks_dict, beh_df, sess_path, overwrite=False, delay_mod
     else:
         fname = 'event_aligned_spks.pkl'
 
-    if os.path.exists(os.path.join(sess_path, fname)) and
-    os.path.exists(os.path.join(sess_path, 'session_windows.pkl')) and
+    if os.path.exists(os.path.join(sess_path, fname)) and \
+    os.path.exists(os.path.join(sess_path, 'session_windows.pkl')) and \
     overwrite==False:
 
         print('loading from file...')

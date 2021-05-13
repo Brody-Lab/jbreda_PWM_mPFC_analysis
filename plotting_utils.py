@@ -524,6 +524,8 @@ def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
 
         neuron_id = sess_name + '_N' + str(neuron)
 
+        print(f"Plotting {neuron_id}")
+
         # calculate psth via gaussian (boxcar option below)
         psth_g = PSTH_gaussain(sess_aligned[neuron], align_windows[neuron], event, df,
                                conditions='first_sound', sigma=150)
