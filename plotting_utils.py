@@ -20,9 +20,10 @@ import statsmodels.api as sm
 import pydove as dv
 import warnings
 # blues
-delay_colors =['#1AA9D0','#2488D5', '#3669D5', '#2140A3', '#161F6F']
-
-pal = sns.color_palette('rocket_r', 5)
+delay_colors =['#f6ab83', '#f06043', '#ca1a50', '#841e5a', '#3f1b43']
+delay_colors_edges = [delay_colors[0], delay_colors[-1]]
+delay_colors_middle = np.array(delay_colors[1:4])
+pal = sns.color_palette('rocket_r', 2)
 
 # green to red
 
@@ -541,7 +542,7 @@ def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
                                conditions='first_sound', sigma=150)
         # psth_b = PSTH_boxcar(sess_aligned[neuron], align_windows, event, df,
         #                      conditions='first_sound', bin_size=0.150)
-        plot_psth(psth_g, ax1, xlim=(-100,2100), legend=True, title=neuron_id, error=False)
+        plot_psth(psth_g, ax1, xlim=(-100,2100), legend=True, title=neuron_id, error=True)
 
         # FIRING RATE ~ LOUDNESS
         # extract data
