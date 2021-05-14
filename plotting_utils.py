@@ -17,9 +17,12 @@ import scipy.io as spio
 from scipy import stats
 from scipy.ndimage import gaussian_filter1d
 import statsmodels.api as sm
+import pydove as dv
 import warnings
 # blues
 delay_colors =['#1AA9D0','#2488D5', '#3669D5', '#2140A3', '#161F6F']
+
+pal = sns.color_palette('rocket_r', 5)
 
 # green to red
 
@@ -299,7 +302,7 @@ def summarize_spike_counts(counted_spks, masking=True):
 
     return counted_spks, counted_mean, counted_sem
 
-def plot_psth(psth, axis=None, title=None, xlim=None, ylim=None,
+def plot_psth(psth, ax=None, title=None, xlim=None, ylim=None,
               legend=False, stimulus_bar=None, error=True):
 
     """
@@ -321,10 +324,7 @@ def plot_psth(psth, axis=None, title=None, xlim=None, ylim=None,
     """
 
     # set axes
-    if axis:
-        ax = axis
-    else:
-        ax = plt.gca()
+    ax = plt.gca() if ax is None else ax
 
     # pull of of dictionary for ease
     mean = psth['mean']
@@ -334,12 +334,11 @@ def plot_psth(psth, axis=None, title=None, xlim=None, ylim=None,
     # plot by condition
     for idx, cond_id in enumerate(mean.keys()):
 
-        ax.plot(time, mean[cond_id], color=delay_colors[idx], label=cond_id)
+        ax.plot(time, mean[cond_id], label=cond_id, linewidth=3)
 
         if error:
             ax.fill_between(time, mean[cond_id] - sem[cond_id],
-                       mean[cond_id] + sem[cond_id], alpha = 0.2,
-                       color=delay_colors[idx])
+                       mean[cond_id] + sem[cond_id], alpha = 0.2)
 
     ax.axvspan(0,0.0001, color = 'black')
 
@@ -361,10 +360,7 @@ def plot_psth(psth, axis=None, title=None, xlim=None, ylim=None,
         y_max = (1 - scale) * np.nanmax([np.max(mean[cond_id]) for cond_id in mean.keys()])
 
     if legend:
-        ax.legend(frameon=False, bbox_to_anchor=(1.1, 0.6))
-
-
-
+        ax.legend(frameon=False)
 
     if stimulus_bar == 'sound on':
         ax.axvspan(0, 400, alpha=0.2, color='grey')
@@ -477,14 +473,15 @@ def regress_loudness_and_plot(df, ax=None):
     ax = plt.gca() if ax is None else ax
 
 
-    fit = simple_regplot(df['condition'], df['firing_rate'], ax=ax, title=neuron_id,
-                         ci_kws={'color':'grey'}, line_kws={'color':'grey'},
-                         scatter_kws={'alpha':0.5}, xlabel='Loudness (dB)',
-                         ylabel='Firing Rate (Hz)')
+    fit = dv.regplot(df['condition'], df['firing_rate'],
+    x_jitter=1.3, color='grey', scatter_kws={'alpha':0.5})
+
+    ax.set(xlabel='Loudness (dB)', ylabel='Firing Rate (Hz)', title=neuron_id)
+    sns.despine()
 
     # get summary info & mark black on plot for visual
     df_summary = df.groupby(['condition'], as_index=False).mean()
-    ax.scatter(df_summary['condition'], df_summary['firing_rate'], color='black')
+    ax.scatter(df_summary['condition'], df_summary['firing_rate'], c = pal.as_hex())
 
     # add in statistics & save them out
     ax.text(95, df['firing_rate'].max(),f'$R^2$ = {fit.rsquared:0.4f} \n p = {fit.pvalues[1]:0.4f}')
@@ -530,24 +527,21 @@ def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
     for neuron in range(len(sess_aligned)):
 
         neuron_id = sess_name + '_N' + str(neuron)
-
         print(f"Plotting {neuron_id}")
 
+        ## initialize plot
+        fig = plt.figure(figsize=(17,5))
+        ax1 = plt.subplot2grid((2,5), (0,0), rowspan=2, colspan=3)
+        ax2 = plt.subplot2grid((2,5), (0,3), rowspan=2, colspan=2)
+        plt.tight_layout()
+
+        ## PSTH
         # calculate psth via gaussian (boxcar option below)
         psth_g = PSTH_gaussain(sess_aligned[neuron], align_windows[neuron], event, df,
                                conditions='first_sound', sigma=150)
         # psth_b = PSTH_boxcar(sess_aligned[neuron], align_windows, event, df,
         #                      conditions='first_sound', bin_size=0.150)
-
-        ## PSTHs
-        fig, ax = plt.subplots(1,1, figsize = (12,5))
-        plot_psth(psth_g, ax, legend=True, title=neuron_id)
-
-        # save out
-        fig_name = f"{neuron_id}_{event}_psth"
-        plt.tight_layout()
-        plt.savefig(os.path.join(fig_save_path, fig_name))
-        plt.close("all")
+        plot_psth(psth_g, ax1, xlim=(-100,2100), legend=True, title=neuron_id, error=False)
 
         # FIRING RATE ~ LOUDNESS
         # extract data
@@ -555,14 +549,12 @@ def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
         trials_loudness.append(loudness_df)
 
         # plot & regress
-        fig2,ax2 = plt.subplots(1,1, figsize=(8,5))
         regression_stats = regress_loudness_and_plot(loudness_df, ax=ax2)
         summary_stats.append(regression_stats)
 
         # save out
-        fig_name = f"{neuron_id}_{event}_loudness"
-        plt.tight_layout()
-        plt.savefig(os.path.join(fig_save_path, fig_name))
+        fig_name = f"{neuron_id}_{event}_dual_plot"
+        plt.savefig(os.path.join(fig_save_path, fig_name), bbox_inches='tight')
         plt.close("all")
 
 
