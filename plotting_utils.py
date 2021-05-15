@@ -555,7 +555,7 @@ def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
 
         # FIRING RATE ~ LOUDNESS
         # extract data
-        loudness_df = fr_by_loudness_df(psth_g, neuron_id)
+        loudness_df = fr_by_condition_df(psth_g, neuron_id,loudness=True)
         trials_loudness.append(loudness_df)
 
         # plot & regress
