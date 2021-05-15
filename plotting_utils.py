@@ -19,6 +19,8 @@ from scipy.ndimage import gaussian_filter1d
 import statsmodels.api as sm
 import pydove as dv
 import warnings
+from cycler import cycler
+from statsmodels.stats.weightstats import ttest_ind
 # blues
 delay_colors =['#f6ab83', '#f06043', '#ca1a50', '#841e5a', '#3f1b43']
 delay_colors_edges = [delay_colors[0], delay_colors[-1]]
@@ -316,8 +318,10 @@ def plot_psth(psth, ax=None, title=None, xlim=None, ylim=None,
     title : str, optional- default = None, title of plot
     xlim  : arr, optional- default = None, x limits of plot
     ylim  : arr, optional- default = None, y limits of plot
-    legens : bool, optional- default = False, to turn legend on
+    legends : bool, optional- default = False, to turn legend on
     stimulus_bar : str, optional- default = None, 'sound on' or 'sound off'
+    error : bool, optional, whether or not to have sem error plotted
+    kwargs : dict, optional, key words arguments for plt.plot
 
     returns:
     --------
@@ -371,7 +375,7 @@ def plot_psth(psth, ax=None, title=None, xlim=None, ylim=None,
 
     sns.despine()
 
-def fr_by_loudness_df(psth, neuron_id):
+def fr_by_condition_df(psth, neuron_id, loudness=True):
 
     """
     Create df with average firing rate information by first sound loudness for
@@ -382,6 +386,8 @@ def fr_by_loudness_df(psth, neuron_id):
     psth      : dict, output from psth_gaussain() or psth_boxcar() with firing rate
                 information
     neuron_id : str, session data and neuron idx for labeling
+    loudness  : bool, optional, turn on when analyzing loudness condition to properly
+                format string for regresssion
 
     returns
     -------
@@ -394,8 +400,11 @@ def fr_by_loudness_df(psth, neuron_id):
     for key in psth['data'].keys():
         for trial_psth in psth['data'][key]:
 
-            # update loudness values
-            conds.append(float(key.replace('*','')))
+            # convert from str to float if using for regression
+            if loudness:
+                conds.append(float(key.replace('*','')))
+            else:
+                conds.append(key)
 
             # get mean for each trial during only the delay period
             with warnings.catch_warnings():
