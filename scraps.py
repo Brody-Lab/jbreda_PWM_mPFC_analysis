@@ -58,6 +58,52 @@ def run_delay_analysis_for_multiple_events(sess_name, sess_aligned, align_window
         analyze_and_plot_loudness(sess_name, sess_aligned, align_windows,
                                   event, df, fig_save_path, sess_path)
 
+"Regression"
+
+def simple_regplot( x, y, n_std=2, n_pts=100, ax=None, scatter_kws=None, line_kws=None,
+    ci_kws=None, title=None, xlabel=None, ylabel=None):
+
+    """ Draw a regression line with error interval & save output from stats model.
+    Modified from :https://stackoverflow.com/questions/22852244/how-to-get-the-
+    numerical-fitting-results-when-plotting-a-regression-in-seaborn """
+
+    ax = plt.gca() if ax is None else ax
+
+    # calculate best-fit line and interval
+    x_fit = sm.add_constant(x)
+    fit_results = sm.OLS(y, x_fit, missing='drop').fit()
+
+    eval_x = sm.add_constant(np.linspace(np.min(x), np.max(x), n_pts))
+    pred = fit_results.get_prediction(eval_x)
+
+    # draw the fit line and error interval
+    ci_kws = {} if ci_kws is None else ci_kws
+    ax.fill_between(
+        eval_x[:, 1],
+        pred.predicted_mean - n_std * pred.se_mean,
+        pred.predicted_mean + n_std * pred.se_mean,
+        alpha=0.5,
+        **ci_kws,
+    )
+    line_kws = {} if line_kws is None else line_kws
+    h = ax.plot(eval_x[:, 1], pred.predicted_mean, **line_kws)
+
+    # draw the scatterplot
+    scatter_kws = {} if scatter_kws is None else scatter_kws
+    ax.scatter(x, y, color=h[0].get_color(), **scatter_kws)
+
+    # add information
+    if title:
+        ax.set_title(title)
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    if ylabel:
+        ax.set_ylabel(ylabel)
+
+    sns.despine()
+
+    return fit_results
+
 
 
 

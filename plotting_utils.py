@@ -305,6 +305,8 @@ def summarize_spike_counts(counted_spks, masking=True):
 
     return counted_spks, counted_mean, counted_sem
 
+"Plot PSTH"
+
 def plot_psth(psth, ax=None, title=None, xlim=None, ylim=None,
               legend=False, stimulus_bar=None, error=True):
 
@@ -375,6 +377,8 @@ def plot_psth(psth, ax=None, title=None, xlim=None, ylim=None,
 
     sns.despine()
 
+"Create data frame of firing rate for whole delay ~ condition for given psth"
+
 def fr_by_condition_df(psth, neuron_id, loudness=True):
 
     """
@@ -417,49 +421,7 @@ def fr_by_condition_df(psth, neuron_id, loudness=True):
 
     return df
 
-def simple_regplot( x, y, n_std=2, n_pts=100, ax=None, scatter_kws=None, line_kws=None,
-    ci_kws=None, title=None, xlabel=None, ylabel=None):
-
-    """ Draw a regression line with error interval & save output from stats model.
-    Modified from :https://stackoverflow.com/questions/22852244/how-to-get-the-
-    numerical-fitting-results-when-plotting-a-regression-in-seaborn """
-
-    ax = plt.gca() if ax is None else ax
-
-    # calculate best-fit line and interval
-    x_fit = sm.add_constant(x)
-    fit_results = sm.OLS(y, x_fit, missing='drop').fit()
-
-    eval_x = sm.add_constant(np.linspace(np.min(x), np.max(x), n_pts))
-    pred = fit_results.get_prediction(eval_x)
-
-    # draw the fit line and error interval
-    ci_kws = {} if ci_kws is None else ci_kws
-    ax.fill_between(
-        eval_x[:, 1],
-        pred.predicted_mean - n_std * pred.se_mean,
-        pred.predicted_mean + n_std * pred.se_mean,
-        alpha=0.5,
-        **ci_kws,
-    )
-    line_kws = {} if line_kws is None else line_kws
-    h = ax.plot(eval_x[:, 1], pred.predicted_mean, **line_kws)
-
-    # draw the scatterplot
-    scatter_kws = {} if scatter_kws is None else scatter_kws
-    ax.scatter(x, y, color=h[0].get_color(), **scatter_kws)
-
-    # add information
-    if title:
-        ax.set_title(title)
-    if xlabel:
-        ax.set_xlabel(xlabel)
-    if ylabel:
-        ax.set_ylabel(ylabel)
-
-    sns.despine()
-
-    return fit_results
+"Firing rate ~ First sound loudness analysis"
 
 def regress_loudness_and_plot(df, ax=None):
 
@@ -468,7 +430,8 @@ def regress_loudness_and_plot(df, ax=None):
 
     params
     ------
-    df : df, dataframe for a neuron created by fr_by_loudness_df()
+    df : df, dataframe for a neuron created by fr_by_condition_df()
+    ax : optional, defualt = gca(), which axis to plot to
 
     returns
     -------
@@ -482,7 +445,7 @@ def regress_loudness_and_plot(df, ax=None):
     neuron_id = df['neuron_id'][0]
     ax = plt.gca() if ax is None else ax
 
-
+    # this comes from the pydove library
     fit = dv.regplot(df['condition'], df['firing_rate'],
     x_jitter=1.3, color='grey', scatter_kws={'alpha':0.5})
 
@@ -574,3 +537,118 @@ def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
 
     loudness_df = pd.concat(trials_loudness)
     loudness_df.reset_index().to_csv(os.path.join(sess_path, f'{neuron_id}_{event}_fr_by_loudness_regression.csv'))
+
+"Firing rate ~ correct side choice analysis"
+
+def analyze_and_plot_correct_side(sess_name, sess_aligned, align_windows, event,
+                                 df, fig_save_path):
+
+    """
+    Function that analyzes and visualizes average delay period firing rate split conditioned
+    on which side was correct for all the neurons in a session
+
+    Params
+    ------
+    sess_name     : str, name of the session for id in plotting
+    sess_aligned  : dict, nested with dicts for each neuron giving alignment times for events
+                    in the trial output from event_align_session()
+    sess_windows  : dict, with timing information of alignment from event_align_session() for each neuron
+    event         : str, key used for sess_aligne and sess_windows, e.g. 'delay2s' if you only want
+                    2s trials delay or 'delay_overlap' if you want all delay types first 2s
+    dfs           : behavior data frames to use based on your alignment events. For example,
+                    if aligning to `delay2s`, your df should contain only 2s trials
+    fig_save_path : str, where you want to save out the psth and loudness regression figures
+
+
+    Returns
+    -------
+    stats_dfs : data frame with pvalues for each neuron t-test of fr ~ correct side
+
+    """
+
+    ## set pallete
+    lr_pal = ['#3066C8', '#C89230']
+    lr_cycler =cycler(color=lr_pal)
+
+    summary_stats = []
+
+    # iterate over each neuron in the session
+    for neuron in range(len(sess_aligned)):
+
+        neuron_id = sess_name + '_N' + str(neuron)
+        print(f"Plotting {neuron_id}")
+
+        # initialize plot
+        fig = plt.figure(figsize=(17,5))
+        ax1 = plt.subplot2grid((2,5), (0,0), rowspan=2, colspan=3)
+        ax1.set_prop_cycle(lr_cycler) # keeps colors the same in both plots
+        ax2 = plt.subplot2grid((2,5), (0,3), rowspan=2, colspan=2)
+        plt.tight_layout()
+
+        # PSTH
+        psth_g = PSTH_gaussain(sess_aligned[neuron], align_windows[neuron], event, df,
+                               conditions='correct_side', sigma=150)
+
+        plot_psth(psth_g, ax1, xlim=(-100,2100), legend=True, title=neuron_id, error=True)
+
+        # Firing Rate ~ Correct Side
+        correct_side_df = fr_by_condition_df(psth_g, neuron_id, loudness=False)
+        stats_df = ttest_correct_side_and_plot(correct_side_df,lr_pal, ax=ax2)
+        summary_stats.append(stats_df)
+
+        # save out
+        fig_name = f"{neuron_id}_{event}_correct_side"
+        plt.savefig(os.path.join(fig_save_path, fig_name), bbox_inches='tight')
+        plt.close("all")
+
+    # concatonate data frames into one & return
+    return pd.concat(summary_stats)
+
+def ttest_correct_side_and_plot(df, pal, ax=None):
+
+    """
+    Function that takes takes firing rate for psth conditioned on correct side, plots the data
+    and analyzes with a two sided ttest
+
+    params
+    ------
+    df  : dataframe, output from fr_by_condition_df()
+    pal : color pallete to use for plotting (pre-made or custom)
+    ax  : optional, defualt = gca(), which axis to plot to
+
+    returns
+    -------
+    stats_df : df, with p-value from two sided t-test of l firing rate vs r firing rate
+
+    plots
+    -----
+    firing rate by condition on all trials via swamrp plot & summary boxplot w/ pvalue
+
+    """
+
+    neuron_id = df['neuron_id'][0]
+    ax = plt.gca() if ax is None else ax
+
+    # perform t test
+    left = df.query('condition == "LEFT"')['firing_rate']
+    right = df.query('condition == "RIGHT"')['firing_rate']
+    _, pval, _ = ttest_ind(left.dropna(),right.dropna())
+
+    # plot
+    ax = sns.boxplot(x='condition', y='firing_rate', data=df, width=0.25, showfliers=False,
+                 boxprops={'facecolor':'none'}, palette=pal, zorder=1)
+
+    ax = sns.swarmplot(x='condition', y='firing_rate', data=df, palette=pal, alpha = .7)
+
+    # add pvalue to plot
+    ax.text(1.2, df['firing_rate'].min(), f"p = {pval:0.4f}")
+
+    # aesthetics
+    ax.set(xlabel="Side Choice", ylabel="Firing Rate (Hz)", title=neuron_id)
+    sns.despine()
+
+    # create df to return
+    stats_df = pd.DataFrame({'neuron_id' : neuron_id,
+                             'pvalue' : pval}, index = [0])
+
+    return stats_df
