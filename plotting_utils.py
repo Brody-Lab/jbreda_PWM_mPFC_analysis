@@ -25,7 +25,7 @@ from statsmodels.stats.weightstats import ttest_ind
 delay_colors =['#f6ab83', '#f06043', '#ca1a50', '#841e5a', '#3f1b43']
 delay_colors_edges = [delay_colors[0], delay_colors[-1]]
 delay_colors_middle = np.array(delay_colors[1:4])
-pal = sns.color_palette('rocket_r', 2)
+delay_color = delay_colors
 
 # green to red
 
@@ -153,9 +153,9 @@ def smooth_trial(binarized_trial, sigma):
     """
     # multply by 1000 to get to spks/second (as opposed to spks/ms)
     smoothed = gaussian_filter1d(binarized_trial, sigma, mode='constant') * 1000
-    smoothed_remove_masking = np.where(smoothed == 0, np.nan, smoothed)
+    # smoothed_remove_masking = np.where(smoothed == 0, np.nan, smoothed)
 
-    return smoothed_remove_masking
+    return smoothed
 
 def smooth_trials(binarized_trials, sigma, summary):
 
@@ -454,7 +454,7 @@ def regress_loudness_and_plot(df, ax=None):
 
     # get summary info & mark black on plot for visual
     df_summary = df.groupby(['condition'], as_index=False).mean()
-    ax.scatter(df_summary['condition'], df_summary['firing_rate'], c = pal.as_hex())
+    ax.scatter(df_summary['condition'], df_summary['firing_rate'], c = delay_color)
 
     # add in statistics & save them out
     ax.text(95, df['firing_rate'].max(),f'$R^2$ = {fit.rsquared:0.4f} \n p = {fit.pvalues[1]:0.4f}')
@@ -497,6 +497,8 @@ def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
     trials_loudness = []
     summary_stats = []
 
+    delay_cycler =cycler(color=delay_color)
+
     for neuron in range(len(sess_aligned)):
 
         neuron_id = sess_name + '_N' + str(neuron)
@@ -505,6 +507,7 @@ def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
         ## initialize plot
         fig = plt.figure(figsize=(17,5))
         ax1 = plt.subplot2grid((2,5), (0,0), rowspan=2, colspan=3)
+        ax1.set_prop_cycle(delay_cycler) # keeps colors the same in both plots
         ax2 = plt.subplot2grid((2,5), (0,3), rowspan=2, colspan=2)
         plt.tight_layout()
 
