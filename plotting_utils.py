@@ -27,10 +27,6 @@ delay_colors_edges = [delay_colors[0], delay_colors[-1]]
 delay_colors_middle = np.array(delay_colors[1:4])
 delay_color = delay_colors
 
-# green to red
-
-# delay_colors=['#DAF7A6', '#FFC300', '#FF5733', '#C70039', '#900C3F']
-
 
 "PSTHs- Gaussain"
 
