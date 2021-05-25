@@ -73,10 +73,9 @@ pip install neo
 OR
 
 ```
-conda create -n PWM_ephys python=3.7 pip numpy matplotlib scipy scikit-learn h5py pyqt cython pillow black seaborn jupyter
+- conda create -n PWM_ephys python=3.7 pip numpy matplotlib scipy scikit-learn h5py pyqt cython pillow black seaborn jupyter statsmodels
 conda activate PWM_ephys
 pip3 install jedi==0.17.2
-pip install tqdm
 
 ```
 
