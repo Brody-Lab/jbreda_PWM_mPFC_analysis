@@ -238,7 +238,7 @@ def PSTH_boxcar(event_aligned_spks, event_aligned_windows, event, df,
 
         # append (divide by bin_size to get in Hz)
         psth['n'].append(len(selected_trials))
-        print(f'for {cond_id} there are {len(selected_trials)} for this session')
+        print(f'for {cond_id} there are {len(selected_trials)} trials for this session')
         psth['data'][cond_id] = counted_spks_masked /  bin_size
         psth['mean'][cond_id] = mean / bin_size
         psth['sem'][cond_id] = sem / bin_size
@@ -256,8 +256,8 @@ def get_spike_counts(event_aligned_spks, window, bin_size):
     params
     ------
     event_aligned_spks : event_aligned spike times for a single neuron & event from align_neuron_to_events()
-    window : window of time around event to analyze (NOTE: this is limited by the windows in simuli_align()
-    bin_size : int, binsize in s to use for boxcar
+    window             : window of time around event to analyze (NOTE: this is limited by the windows in simuli_align()
+    bin_size           : int, binsize in s to use for boxcar
 
     returns
     -------
@@ -318,7 +318,7 @@ def plot_psth(psth, ax=None, title=None, xlim=None, ylim=None,
     legends : bool, optional- default = False, to turn legend on
     stimulus_bar : str, optional- default = None, 'sound on' or 'sound off'
     error : bool, optional, whether or not to have sem error plotted
-    kwargs : dict, optional, key words arguments for plt.plot
+
 
     returns:
     --------
@@ -374,7 +374,7 @@ def plot_psth(psth, ax=None, title=None, xlim=None, ylim=None,
 
 "Create data frame of firing rate for whole delay ~ condition for given psth"
 
-def fr_by_condition_df(psth, neuron_id, loudness=True):
+def fr_by_condition_df(psth, neuron_id, window, loudness=True):
 
     """
     Create df with average firing rate information by first sound loudness for
@@ -385,6 +385,8 @@ def fr_by_condition_df(psth, neuron_id, loudness=True):
     psth      : dict, output from psth_gaussain() or psth_boxcar() with firing rate
                 information
     neuron_id : str, session data and neuron idx for labeling
+    window    : arr, 2d containing start and stop time in ms relative to event onset to
+                average firing rate over
     loudness  : bool, optional, turn on when analyzing loudness condition to properly
                 format string for regresssion
 
@@ -408,7 +410,7 @@ def fr_by_condition_df(psth, neuron_id, loudness=True):
             # get mean for each trial during only the delay period
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=RuntimeWarning)
-                mean_fr_by_cond.append(np.nanmean(trial_psth[600:-600]))
+                mean_fr_by_cond.append(np.nanmean(trial_psth[window[0]:window[1]]))
 
     ids = [neuron_id] * len(conds)
 
@@ -460,7 +462,7 @@ def regress_loudness_and_plot(df, ax=None):
     return stats_df
 
 def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
-                              fig_save_path, sess_path):
+                              fig_save_path):
 
     """
     Function that analyzes and visualizes average delay period firing rate for a
@@ -510,13 +512,12 @@ def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
         # calculate psth via gaussian (boxcar option below)
         psth_g = PSTH_gaussain(sess_aligned[neuron], align_windows[neuron], event, df,
                                conditions='first_sound', sigma=150)
-        # psth_b = PSTH_boxcar(sess_aligned[neuron], align_windows, event, df,
-        #                      conditions='first_sound', bin_size=0.150)
+
         plot_psth(psth_g, ax1, xlim=(-100,2100), legend=True, title=neuron_id, error=True)
 
         # FIRING RATE ~ LOUDNESS
         # extract data
-        loudness_df = fr_by_condition_df(psth_g, neuron_id,loudness=True)
+        loudness_df = fr_by_condition_df(psth_g, neuron_id,loudness=True, window=(600,-600))
         trials_loudness.append(loudness_df)
 
         # plot & regress
@@ -524,17 +525,19 @@ def analyze_and_plot_loudness(sess_name, sess_aligned, align_windows, event, df,
         summary_stats.append(regression_stats)
 
         # save out
-        fig_name = f"{neuron_id}_{event}_dual_plot"
+        fig_name = f"{neuron_id}_{event}_dual_delay_plot"
         plt.savefig(os.path.join(fig_save_path, fig_name), bbox_inches='tight')
         plt.close("all")
 
 
     # concat & save out data frames used for regression
     stats_df = pd.concat(summary_stats)
-    stats_df.reset_index().to_csv(os.path.join(sess_path, f'{neuron_id}_{event}_fr_by_loudness.csv'))
+    stats_df.reset_index().to_csv(os.path.join(fig_save_path, f'{neuron_id}_{event}_fr_by_loudness.csv'))
 
     loudness_df = pd.concat(trials_loudness)
-    loudness_df.reset_index().to_csv(os.path.join(sess_path, f'{neuron_id}_{event}_fr_by_loudness_regression.csv'))
+    loudness_df.reset_index().to_csv(os.path.join(fig_save_path, f'{neuron_id}_{event}_fr_by_loudness_regression.csv'))
+
+    return stats_df, loudness_df
 
 "Firing rate ~ correct side choice analysis"
 
@@ -590,7 +593,7 @@ def analyze_and_plot_correct_side(sess_name, sess_aligned, align_windows, event,
         plot_psth(psth_g, ax1, xlim=(-100,2100), legend=True, title=neuron_id, error=True)
 
         # Firing Rate ~ Correct Side
-        correct_side_df = fr_by_condition_df(psth_g, neuron_id, loudness=False)
+        correct_side_df = fr_by_condition_df(psth_g, neuron_id, loudness=False, window=(600,-600))
         stats_df = ttest_correct_side_and_plot(correct_side_df,lr_pal, ax=ax2)
         summary_stats.append(stats_df)
 
