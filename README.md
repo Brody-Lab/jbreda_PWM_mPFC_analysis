@@ -7,6 +7,8 @@ Repository for the analysis of electrophysiological data after spike sorting. An
 * flexible python code for exploratory visualizations of neural activity during stimulus and delay period conditioned on multiple features
 * inspired by the [Spykes](https://github.com/jess-breda/spykes) library & rewritten with updated python syntax & seaborn visuals
 
+![data_sdc_20190902_145404_fromSD_N0_delay_overlap_dual_delay_plot](https://user-images.githubusercontent.com/53059059/202951294-ef9dc87a-1808-47f3-9869-0ad10aeb782d.png)
+
 ## Steps
 - (1) Align spike and behavioral data (`\kilosort_bdata_alignment`)
 - (2) Import to python (`io_utils.py`)
